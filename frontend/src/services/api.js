@@ -1,4 +1,4 @@
-const API_URL = 'https://sistema-extensao-estoque.onrender.com';
+const API_URL = 'https://sistema-extensao-estoque.onrender.com/api';
 
 export async function buscarProdutos() {
   try {
