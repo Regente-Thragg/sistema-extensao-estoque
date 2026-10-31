@@ -1,0 +1,299 @@
+import React, { useState, useEffect } from 'react';
+
+export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor, onConsumo, onExcluir }) {
+  const [produtos, setProdutos] = useState(produtosIniciais || []);
+  const [nome, setNome] = useState('');
+  const [categoria, setCategoria] = useState('');
+  const [qtd, setQtd] = useState('');
+  const [preco, setPreco] = useState('');
+
+  const [precosReposicao, setPrecosReposicao] = useState({});
+  const [busca, setBusca] = useState('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('TODAS');
+
+  // Estados para controlar o Modal de Confirmação de Exclusão
+  const [modalExcluirAberto, setModalExcluirAberto] = useState(false);
+  const [produtoParaExcluir, setProdutoParaExcluir] = useState(null);
+
+  // Estados para controlar o Modal de Alerta Customizado (ex: Produto sem estoque)
+  const [modalAlertaAberto, setModalAlertaAberto] = useState(false);
+  const [mensagemAlerta, setMensagemAlerta] = useState('');
+
+  useEffect(() => {
+    setProdutos(produtosIniciais || []);
+  }, [produtosIniciais]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!nome || !categoria || !qtd || !preco) return;
+
+    const novoProduto = { nome, categoria, qtd: Number(qtd), preco: Number(preco) };
+    const resultado = await onCriar(novoProduto);
+    if (resultado && !resultado.erro) {
+      setProdutos([...produtos, resultado]);
+      setNome(''); setCategoria(''); setQtd(''); setPreco('');
+    }
+  };
+
+  const handleConsumoLocal = async (produto) => {
+    if (produto.qtd <= 0) {
+      setMensagemAlerta(`O item "${produto.nome}" está sem estoque disponível para consumo!`);
+      setModalAlertaAberto(true);
+      return;
+    }
+    const atualizado = await onConsumo(produto.id, 1);
+    if (atualizado && !atualizado.erro) {
+      setProdutos(produtos.map(p => p.id === produto.id ? atualizado : p));
+    } else {
+      setMensagemAlerta(atualizado?.erro || 'Erro ao registrar consumo.');
+      setModalAlertaAberto(true);
+    }
+  };
+
+  const handleReporLocal = async (produto) => {
+    const novoPrecoDigitado = precosReposicao[produto.id];
+    const precoEnvio = novoPrecoDigitado !== undefined && novoPrecoDigitado !== '' ? Number(novoPrecoDigitado) : null;
+
+    const atualizado = await onRepor(produto.id, 1, precoEnvio);
+    if (atualizado && !atualizado.erro) {
+      setProdutos(produtos.map(p => p.id === produto.id ? atualizado : p));
+      setPrecosReposicao(prev => ({ ...prev, [produto.id]: '' }));
+    }
+  };
+
+  const abrirModalExcluir = (produto) => {
+    setProdutoParaExcluir(produto);
+    setModalExcluirAberto(true);
+  };
+
+  const confirmarExclusao = async () => {
+    if (!produtoParaExcluir) return;
+    await onExcluir(produtoParaExcluir.id);
+    setProdutos(produtos.filter(p => p.id !== produtoParaExcluir.id));
+    setModalExcluirAberto(false);
+    setProdutoParaExcluir(null);
+  };
+
+  const categoriasUnicas = ['TODAS', ...new Set(produtos.map(p => p.categoria))];
+
+  const produtosFiltrados = produtos.filter(p => {
+    const correspondeNome = p.nome.toLowerCase().includes(busca.toLowerCase());
+    const correspondeCategoria = categoriaFiltro === 'TODAS' || p.categoria === categoriaFiltro;
+    return correspondeNome && correspondeCategoria;
+  });
+
+  return (
+    <div className="p-8 space-y-6 relative">
+      <h1 className="text-2xl font-bold text-gray-800">Controle de Despensa e Estoque Doméstico</h1>
+
+      {/* Formulário de Cadastro */}
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Nome do Item</label>
+          <input 
+            type="text" 
+            value={nome} 
+            onChange={(e) => setNome(e.target.value)} 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            placeholder="Ex: Arroz 5kg" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Categoria</label>
+          <input 
+            type="text" 
+            value={categoria} 
+            onChange={(e) => setCategoria(e.target.value)} 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            placeholder="Ex: Alimentos" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Quantidade</label>
+          <input 
+            type="number" 
+            value={qtd} 
+            onChange={(e) => setQtd(e.target.value)} 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            placeholder="0" 
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Preço Unitário (R$)</label>
+          <input 
+            type="number" 
+            step="0.01" 
+            value={preco} 
+            onChange={(e) => setPreco(e.target.value)} 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            placeholder="0.00" 
+          />
+        </div>
+        <button type="submit" className="bg-indigo-600 text-white font-medium py-2 px-4 rounded-xl hover:bg-indigo-700 transition shadow-sm">
+          Cadastrar
+        </button>
+      </form>
+
+      {/* Filtros e Busca */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="w-full md:w-1/2">
+          <label className="block text-sm font-medium text-gray-600 mb-1">Pesquisar por Nome</label>
+          <input 
+            type="text" 
+            value={busca} 
+            onChange={(e) => setBusca(e.target.value)} 
+            placeholder="Digite para buscar um item..." 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+        </div>
+        <div className="w-full md:w-1/3">
+          <label className="block text-sm font-medium text-gray-600 mb-1">Filtrar por Categoria</label>
+          <select 
+            value={categoriaFiltro} 
+            onChange={(e) => setCategoriaFiltro(e.target.value)}
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          >
+            {categoriasUnicas.map((cat, index) => (
+              <option key={index} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Tabela de Produtos */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Lista de Itens ({produtosFiltrados.length} encontrados)</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 text-gray-500 text-sm">
+                <th className="py-3 px-4">Nome</th>
+                <th className="py-3 px-4">Categoria</th>
+                <th className="py-3 px-4">Quantidade</th>
+                <th className="py-3 px-4">Preço Unitário</th>
+                <th className="py-3 px-4 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm text-gray-700">
+              {produtosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-4 text-center text-gray-400">Nenhum item encontrado com os filtros atuais.</td>
+                </tr>
+              ) : (
+                produtosFiltrados.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                    <td className="py-3 px-4 font-medium">{p.nome}</td>
+                    <td className="py-3 px-4">{p.categoria}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${p.qtd <= 3 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {p.qtd} unidades
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-gray-800">R$ {Number(p.preco).toFixed(2)}</div>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="Novo preço?" 
+                          value={precosReposicao[p.id] || ''}
+                          onChange={(e) => setPrecosReposicao({ ...precosReposicao, [p.id]: e.target.value })}
+                          className="w-32 bg-white text-gray-900 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          title="Digite o novo preço unitário caso tenha alterado na reposição"
+                        />
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex flex-col items-center gap-1.5 mx-auto w-44">
+                        <button 
+                          onClick={() => handleReporLocal(p)} 
+                          className="w-full bg-indigo-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-indigo-700 transition shadow-sm"
+                        >
+                          + Repor (+1)
+                        </button>
+                        <button 
+                          onClick={() => handleConsumoLocal(p)} 
+                          className="w-full bg-emerald-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-emerald-700 transition shadow-sm"
+                        >
+                          Registrar Consumo (-1)
+                        </button>
+                        <button 
+                          onClick={() => abrirModalExcluir(p)} 
+                          className="w-full bg-rose-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-rose-700 transition shadow-sm"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {modalExcluirAberto && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl text-xl">⚠️</div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-lg">Confirmar Exclusão</h3>
+                <p className="text-xs text-gray-500">Esta ação não poderá ser desfeita.</p>
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Tem certeza que deseja excluir permanentemente o item <strong className="text-gray-800">{produtoParaExcluir?.nome}</strong> do estoque?
+            </p>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                onClick={() => setModalExcluirAberto(false)}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmarExclusao}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm"
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ALERTA CUSTOMIZADO (EX: ESTOQUE INSUFICIENTE) */}
+      {modalAlertaAberto && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl text-xl">⚠️</div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-lg">Atenção ao Estoque</h3>
+                <p className="text-xs text-gray-500">Operação não realizada.</p>
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {mensagemAlerta}
+            </p>
+
+            <div className="flex justify-end pt-2">
+              <button 
+                onClick={() => setModalAlertaAberto(false)}
+                className="px-5 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
