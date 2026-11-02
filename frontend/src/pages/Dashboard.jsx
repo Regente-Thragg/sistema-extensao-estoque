@@ -6,14 +6,13 @@ export default function Dashboard() {
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  // Carrega os dados de produtos e histórico ao abrir o Dashboard
   useEffect(() => {
     async function carregarDadosDashboard() {
       try {
         const dadosProdutos = await buscarProdutos();
         const dadosHistorico = await buscarHistorico();
-        setProdutos(dadosProdutos);
-        setHistorico(dadosHistorico);
+        setProdutos(dadosProdutos || []);
+        setHistorico(dadosHistorico || []);
       } catch (erro) {
         console.error('Erro ao carregar dados do dashboard:', erro);
       } finally {
@@ -23,19 +22,10 @@ export default function Dashboard() {
     carregarDadosDashboard();
   }, []);
 
-  // Cálculos dos indicadores principais
   const totalProdutos = produtos.length;
-  
-  // Itens com estoque baixo (quantidade menor ou igual a 3)
   const estoqueBaixo = produtos.filter(p => p.qtd <= 3).length;
-
-  // Valor total acumulado na despensa (Quantidade * Preço Unitário)
   const valorEstoque = produtos.reduce((acc, p) => acc + (Number(p.qtd) * Number(p.preco)), 0);
-
-  // Total de notificações/movimentações no histórico geral
   const totalNotificacoes = historico.length;
-
-  // Filtra as últimas movimentações de forma segura
   const ultimasMovimentacoes = historico.slice(0, 5);
 
   if (carregando) {
@@ -61,53 +51,55 @@ export default function Dashboard() {
 
       {/* Cards de Resumo e Indicadores Principais (4 Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
         {/* Card 1: Total de Itens */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Total de Itens</span>
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-xl shrink-0">📦</div>
-          </div>
-          <div className="my-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
+          <div className="space-y-1">
+            <span className="text-sm font-medium text-gray-500 block">Total de Itens</span>
             <h3 className="text-3xl font-bold text-gray-800">{totalProdutos}</h3>
+            <span className="text-xs text-gray-400 block pt-1">Produtos cadastrados</span>
           </div>
-          <span className="text-xs text-gray-400">Produtos cadastrados</span>
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+            📦
+          </div>
         </div>
 
         {/* Card 2: Estoque Baixo */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Estoque Baixo</span>
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-xl shrink-0">⚠️</div>
-          </div>
-          <div className="my-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
+          <div className="space-y-1">
+            <span className="text-sm font-medium text-gray-500 block">Estoque Baixo</span>
             <h3 className="text-3xl font-bold text-rose-600">{estoqueBaixo}</h3>
+            <span className="text-xs text-gray-400 block pt-1">Itens com 3 ou menos un</span>
           </div>
-          <span className="text-xs text-gray-400">Itens com 3 ou menos unidades</span>
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+            ⚠️
+          </div>
         </div>
 
         {/* Card 3: Valor Total em Estoque */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Valor em Estoque</span>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-xl shrink-0">💰</div>
-          </div>
-          <div className="my-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
+          <div className="space-y-1">
+            <span className="text-sm font-medium text-gray-500 block">Valor em Estoque</span>
             <h3 className="text-2xl font-bold text-emerald-600">R$ {valorEstoque.toFixed(2)}</h3>
+            <span className="text-xs text-gray-400 block pt-1">Custo total acumulado</span>
           </div>
-          <span className="text-xs text-gray-400">Custo total acumulado</span>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+            💰
+          </div>
         </div>
 
         {/* Card 4: Histórico / Notificações */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Notificações</span>
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-xl shrink-0">🔔</div>
-          </div>
-          <div className="my-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
+          <div className="space-y-1">
+            <span className="text-sm font-medium text-gray-500 block">Notificações</span>
             <h3 className="text-3xl font-bold text-amber-600">{totalNotificacoes}</h3>
+            <span className="text-xs text-gray-400 block pt-1">Registros (3 meses)</span>
           </div>
-          <span className="text-xs text-gray-400">Registros (limpeza em 3 meses)</span>
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+            🔔
+          </div>
         </div>
+
       </div>
 
       {/* Seção Inferior: Boas-vindas e Atividades Recentes */}
