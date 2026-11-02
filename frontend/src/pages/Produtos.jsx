@@ -175,6 +175,13 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
+          <button 
+            type="button" 
+            onClick={() => setNovaCategoriaModal(true)} 
+            className="mb-1.5 w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-1 rounded-lg text-xs font-semibold transition text-center"
+          >
+            + Adicionar Categoria
+          </button>
           <select 
             value={categoria} 
             onChange={(e) => setCategoria(e.target.value)} 
@@ -184,13 +191,6 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
               <option key={cat.id} value={cat.nome}>{cat.nome}</option>
             ))}
           </select>
-          <button 
-            type="button" 
-            onClick={() => setNovaCategoriaModal(true)} 
-            className="mt-1.5 w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-1 rounded-lg text-xs font-semibold transition text-center"
-          >
-            + Adicionar Categoria
-          </button>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
