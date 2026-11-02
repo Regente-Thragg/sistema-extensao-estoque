@@ -175,11 +175,11 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
-          <div className="flex gap-2">
+          <div className="space-y-1.5">
             <select 
               value={categoria} 
               onChange={(e) => setCategoria(e.target.value)} 
-              className="flex-1 bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             >
               {categorias.map((cat) => (
                 <option key={cat.id} value={cat.nome}>{cat.nome}</option>
@@ -188,10 +188,9 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
             <button 
               type="button" 
               onClick={() => setNovaCategoriaModal(true)} 
-              className="bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 px-3 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center"
-              title="Adicionar nova categoria"
+              className="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-1 rounded-lg text-xs font-semibold transition text-center"
             >
-              +
+              + Adicionar Categoria
             </button>
           </div>
         </div>
