@@ -8,6 +8,9 @@ import { buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarV
 export default function App() {
   const [telaAtiva, setTelaAtiva] = useState('dashboard');
   
+  // Estado para controlar se a barra lateral está aberta ou fechada em celulares/telas menores
+  const [sidebarAberta, setSidebarAberta] = useState(false);
+  
   // Estados globais centralizados na aplicação
   const [produtos, setProdutos] = useState([]);
   const [historico, setHistorico] = useState([]);
@@ -37,7 +40,6 @@ export default function App() {
     const resultado = await criarProduto(novoProduto);
     if (resultado && !resultado.erro) {
       setProdutos([...produtos, resultado]);
-      // Atualiza também o histórico global buscando novamente ou adicionando
       const novoHistorico = await buscarHistorico();
       setHistorico(novoHistorico);
     }
@@ -81,21 +83,48 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-800">
+    <div className="flex min-h-screen bg-gray-50 text-gray-800 relative">
+      
+      {/* Botão flutuante para abrir o menu em telas pequenas caso ele esteja fechado */}
+      {!sidebarAberta && (
+        <button
+          onClick={() => setSidebarAberta(true)}
+          className="md:hidden fixed top-4 left-4 z-50 bg-slate-900 text-white p-2.5 rounded-xl shadow-lg hover:bg-slate-800 transition flex items-center justify-center"
+          title="Abrir Menu"
+        >
+          <span className="text-xl">☰</span>
+        </button>
+      )}
+
       {/* Menu Lateral Esquerdo */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col justify-between p-6">
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col justify-between p-6 transition-transform duration-300 ease-in-out
+        md:translate-x-0 md:static
+        ${sidebarAberta ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+      `}>
         <div className="space-y-8">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📦</span>
-            <div>
-              <h2 className="text-xl font-bold tracking-wide text-white">GestãoFácil</h2>
-              <p className="text-xs text-slate-400">Despensa em Casa</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">📦</span>
+              <div>
+                <h2 className="text-xl font-bold tracking-wide text-white">GestãoFácil</h2>
+                <p className="text-xs text-slate-400">Despensa em Casa</p>
+              </div>
             </div>
+            
+            {/* Botão de fechar (seta) ao lado direito de GestãoFácil */}
+            <button
+              onClick={() => setSidebarAberta(false)}
+              className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 transition"
+              title="Fechar Menu"
+            >
+              ◀
+            </button>
           </div>
 
           <nav className="space-y-2">
             <button
-              onClick={() => setTelaAtiva('dashboard')}
+              onClick={() => { setTelaAtiva('dashboard'); setSidebarAberta(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
                 telaAtiva === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
@@ -104,7 +133,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setTelaAtiva('produtos')}
+              onClick={() => { setTelaAtiva('produtos'); setSidebarAberta(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
                 telaAtiva === 'produtos' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
@@ -113,7 +142,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setTelaAtiva('relatorios')}
+              onClick={() => { setTelaAtiva('relatorios'); setSidebarAberta(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
                 telaAtiva === 'relatorios' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
@@ -122,7 +151,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setTelaAtiva('historico')}
+              onClick={() => { setTelaAtiva('historico'); setSidebarAberta(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
                 telaAtiva === 'historico' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
@@ -137,8 +166,16 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Conteúdo Principal enviando os dados em memória (sem refetch ao trocar de aba) */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Fundo escurecido ao abrir o menu no celular */}
+      {sidebarAberta && (
+        <div 
+          onClick={() => setSidebarAberta(false)}
+          className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
+        />
+      )}
+
+      {/* Conteúdo Principal */}
+      <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
         {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} />}
         {telaAtiva === 'produtos' && (
           <Produtos 
