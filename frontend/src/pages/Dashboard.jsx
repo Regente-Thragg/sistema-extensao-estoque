@@ -37,65 +37,65 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-8 text-left">
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+        <div className="text-left">
           <h1 className="text-2xl font-bold text-gray-800">Painel de Controle - Despensa em Casa</h1>
           <p className="text-sm text-gray-500">Visão geral e indicadores do seu estoque doméstico inteligente.</p>
         </div>
-        <div className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-xl text-sm font-semibold shadow-xs">
+        <div className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-xl text-sm font-semibold shadow-xs whitespace-nowrap">
           Residência Ativa
         </div>
       </div>
 
-      {/* Cards de Resumo e Indicadores Principais (4 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
+      {/* Cards de Resumo: 2 por linha até telas muito largas (2xl), assim cada card tem espaço para o ícone */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-6">
+
         {/* Card 1: Total de Itens */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
-          <div className="space-y-1">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-4 hover:shadow-md transition">
+          <div className="space-y-1 min-w-0 flex-1 text-left">
             <span className="text-sm font-medium text-gray-500 block">Total de Itens</span>
             <h3 className="text-3xl font-bold text-gray-800">{totalProdutos}</h3>
             <span className="text-xs text-gray-400 block pt-1">Produtos cadastrados</span>
           </div>
-          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             📦
           </div>
         </div>
 
         {/* Card 2: Estoque Baixo */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
-          <div className="space-y-1">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-4 hover:shadow-md transition">
+          <div className="space-y-1 min-w-0 flex-1 text-left">
             <span className="text-sm font-medium text-gray-500 block">Estoque Baixo</span>
             <h3 className="text-3xl font-bold text-rose-600">{estoqueBaixo}</h3>
             <span className="text-xs text-gray-400 block pt-1">Itens com 3 ou menos un</span>
           </div>
-          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-rose-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             ⚠️
           </div>
         </div>
 
         {/* Card 3: Valor Total em Estoque */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
-          <div className="space-y-1">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-4 hover:shadow-md transition">
+          <div className="space-y-1 min-w-0 flex-1 text-left">
             <span className="text-sm font-medium text-gray-500 block">Valor em Estoque</span>
-            <h3 className="text-2xl font-bold text-emerald-600">R$ {valorEstoque.toFixed(2)}</h3>
+            <h3 className="text-2xl font-bold text-emerald-600 whitespace-nowrap">R$ {valorEstoque.toFixed(2)}</h3>
             <span className="text-xs text-gray-400 block pt-1">Custo total acumulado</span>
           </div>
-          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             💰
           </div>
         </div>
 
         {/* Card 4: Histórico / Notificações */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
-          <div className="space-y-1">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-4 hover:shadow-md transition">
+          <div className="space-y-1 min-w-0 flex-1 text-left">
             <span className="text-sm font-medium text-gray-500 block">Notificações</span>
             <h3 className="text-3xl font-bold text-amber-600">{totalNotificacoes}</h3>
             <span className="text-xs text-gray-400 block pt-1">Registros (3 meses)</span>
           </div>
-          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             🔔
           </div>
         </div>
@@ -103,19 +103,19 @@ export default function Dashboard() {
       </div>
 
       {/* Seção Inferior: Boas-vindas e Atividades Recentes */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Bloco de Boas-vindas e Contexto do Projeto */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-4 flex flex-col justify-between">
+        <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-4 flex flex-col justify-between text-left">
           <div>
             <h3 className="text-lg font-bold text-gray-800 mb-2">Bem-vindo ao Sistema GestãoFácil</h3>
             <p className="text-gray-600 text-sm leading-relaxed">
-              Esta aplicação foi desenvolvida no âmbito da disciplina de Atividades de Extensão para apoiar a organização, o controle inteligente e a gestão de suprimentos da despensa residencial. 
+              Esta aplicação foi desenvolvida no âmbito da disciplina de Atividades de Extensão para apoiar a organização, o controle inteligente e a gestão de suprimentos da despensa residencial.
             </p>
             <p className="text-gray-600 text-sm leading-relaxed mt-2">
               Utilize o menu lateral esquerdo para navegar entre os módulos: gerencie entradas e consumos de itens em tempo real, visualize relatórios analíticos detalhados ou acompanhe o fluxo completo no <strong>Histórico Geral</strong>.
             </p>
           </div>
-          <div className="pt-4 border-t border-gray-100 flex items-center gap-4 text-xs text-gray-500">
+          <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
             <span>✨ Sistema Atualizado</span>
             <span>•</span>
             <span>Sincronizado com Supabase</span>
@@ -125,7 +125,7 @@ export default function Dashboard() {
         </div>
 
         {/* Bloco de Atividades Recentes (Mini Histórico) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4 text-left">
           <h3 className="text-md font-bold text-gray-800 flex items-center gap-2">
             <span>⚡</span> Atividades Recentes
           </h3>
@@ -135,15 +135,15 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {ultimasMovimentacoes.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${item.tipo === 'COMPRA' ? 'bg-indigo-600' : 'bg-emerald-600'}`}></span>
-                    <div>
-                      <p className="font-semibold text-gray-700">{item.produto_nome}</p>
+                <div key={item.id} className="flex items-center justify-between gap-3 text-xs p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${item.tipo === 'COMPRA' ? 'bg-indigo-600' : 'bg-emerald-600'}`}></span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-700 truncate">{item.produto_nome}</p>
                       <span className="text-gray-400">{item.tipo === 'COMPRA' ? 'Reposição' : 'Consumo'}</span>
                     </div>
                   </div>
-                  <span className={`font-bold px-2 py-1 rounded ${item.tipo === 'COMPRA' ? 'text-indigo-700 bg-indigo-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                  <span className={`font-bold px-2 py-1 rounded shrink-0 ${item.tipo === 'COMPRA' ? 'text-indigo-700 bg-indigo-50' : 'text-emerald-700 bg-emerald-50'}`}>
                     {item.tipo === 'COMPRA' ? `+${item.quantidade}` : `-${item.quantidade}`}
                   </span>
                 </div>
