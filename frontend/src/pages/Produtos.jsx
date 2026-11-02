@@ -423,7 +423,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
               <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl text-xl">⚠️</div>
               <div>
                 <h3 className="font-bold text-gray-800 text-lg">Atenção ao Estoque</h3>
-                <p className="text-xs text-gray-500">Operação não realizada.</p>
+                <p className="text-xs text-gray-500">Operação não realizada!</p>
               </div>
             </div>
             
