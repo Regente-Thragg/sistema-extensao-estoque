@@ -6,6 +6,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
   const [categoria, setCategoria] = useState('');
   const [qtd, setQtd] = useState('');
   const [preco, setPreco] = useState('');
+  const [validade, setValidade] = useState('');
 
   const [precosReposicao, setPrecosReposicao] = useState({});
   const [busca, setBusca] = useState('');
@@ -27,17 +28,24 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     e.preventDefault();
     if (!nome || !categoria || !qtd || !preco) return;
 
-    const novoProduto = { nome, categoria, qtd: Number(qtd), preco: Number(preco) };
+    const novoProduto = { 
+      nome, 
+      categoria, 
+      qtd: Number(qtd), 
+      preco: Number(preco), 
+      validade: validade || null 
+    };
+    
     const resultado = await onCriar(novoProduto);
     if (resultado && !resultado.erro) {
       setProdutos([...produtos, resultado]);
-      setNome(''); setCategoria(''); setQtd(''); setPreco('');
+      setNome(''); setCategoria(''); setQtd(''); setPreco(''); setValidade('');
     }
   };
 
   const handleConsumoLocal = async (produto) => {
     if (produto.qtd <= 0) {
-      setMensagemAlerta(`O item "${produto.nome}" está sem estoque disponível para consumo!`);
+      setMensagemAlerta(`O item "${produto.nome}" está sem stock disponível para consumo!`);
       setModalAlertaAberto(true);
       return;
     }
@@ -45,7 +53,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     if (atualizado && !atualizado.erro) {
       setProdutos(produtos.map(p => p.id === produto.id ? atualizado : p));
     } else {
-      setMensagemAlerta(atualizado?.erro || 'Erro ao registrar consumo.');
+      setMensagemAlerta(atualizado?.erro || 'Erro ao registar consumo.');
       setModalAlertaAberto(true);
     }
   };
@@ -74,6 +82,27 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     setProdutoParaExcluir(null);
   };
 
+  // Função para formatar e verificar o estado da validade
+  const formatarValidade = (dataValidade) => {
+    if (!dataValidade) return { texto: 'Não informada', classe: 'bg-gray-100 text-gray-500' };
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const validadeItem = new Date(dataValidade + 'T00:00:00');
+    const diffDias = Math.ceil((validadeItem - hoje) / (1000 * 60 * 60 * 24));
+    const dataFormatada = validadeItem.toLocaleDateString('pt-BR');
+
+    if (diffDias < 0) {
+      return { texto: `Vencido (${dataFormatada})`, classe: 'bg-red-100 text-red-700 font-bold' };
+    } else if (diffDias === 0) {
+      return { texto: `Vence hoje! (${dataFormatada})`, classe: 'bg-red-100 text-red-700 font-bold' };
+    } else if (diffDias <= 7) {
+      return { texto: `Vence em ${diffDias} dias (${dataFormatada})`, classe: 'bg-amber-100 text-amber-800 font-semibold' };
+    } else {
+      return { texto: dataFormatada, classe: 'bg-emerald-50 text-emerald-700' };
+    }
+  };
+
   const categoriasUnicas = ['TODAS', ...new Set(produtos.map(p => p.categoria))];
 
   const produtosFiltrados = produtos.filter(p => {
@@ -87,7 +116,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
       <h1 className="text-2xl font-bold text-gray-800">Controle de Despensa e Estoque Doméstico</h1>
 
       {/* Formulário de Cadastro */}
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Nome do Item</label>
           <input 
@@ -129,7 +158,16 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
             placeholder="0.00" 
           />
         </div>
-        <button type="submit" className="bg-indigo-600 text-white font-medium py-2 px-4 rounded-xl hover:bg-indigo-700 transition shadow-sm">
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Validade</label>
+          <input 
+            type="date" 
+            value={validade} 
+            onChange={(e) => setValidade(e.target.value)} 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+          />
+        </div>
+        <button type="submit" className="bg-indigo-600 text-white font-medium py-2 px-4 rounded-xl hover:bg-indigo-700 transition shadow-sm h-[38px]">
           Cadastrar
         </button>
       </form>
@@ -171,62 +209,71 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
                 <th className="py-3 px-4">Categoria</th>
                 <th className="py-3 px-4">Quantidade</th>
                 <th className="py-3 px-4">Preço Unitário</th>
+                <th className="py-3 px-4">Validade</th>
                 <th className="py-3 px-4 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-700">
               {produtosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-4 text-center text-gray-400">Nenhum item encontrado com os filtros atuais.</td>
+                  <td colSpan="6" className="py-4 text-center text-gray-400">Nenhum item encontrado com os filtros atuais.</td>
                 </tr>
               ) : (
-                produtosFiltrados.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="py-3 px-4 font-medium">{p.nome}</td>
-                    <td className="py-3 px-4">{p.categoria}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${p.qtd <= 3 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {p.qtd} unidades
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
-                        <div className="font-semibold text-gray-800">R$ {Number(p.preco).toFixed(2)}</div>
-                        <input 
-                          type="number" 
-                          step="0.01"
-                          placeholder="Novo preço?" 
-                          value={precosReposicao[p.id] || ''}
-                          onChange={(e) => setPrecosReposicao({ ...precosReposicao, [p.id]: e.target.value })}
-                          className="w-32 bg-white text-gray-900 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                          title="Digite o novo preço unitário caso tenha alterado na reposição"
-                        />
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex flex-col items-center gap-1.5 mx-auto w-44">
-                        <button 
-                          onClick={() => handleReporLocal(p)} 
-                          className="w-full bg-indigo-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-indigo-700 transition shadow-sm"
-                        >
-                          + Repor (+1)
-                        </button>
-                        <button 
-                          onClick={() => handleConsumoLocal(p)} 
-                          className="w-full bg-emerald-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-emerald-700 transition shadow-sm"
-                        >
-                          Registrar Consumo (-1)
-                        </button>
-                        <button 
-                          onClick={() => abrirModalExcluir(p)} 
-                          className="w-full bg-rose-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-rose-700 transition shadow-sm"
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                produtosFiltrados.map((p) => {
+                  const statusValidade = formatarValidade(p.validade);
+                  return (
+                    <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                      <td className="py-3 px-4 font-medium">{p.nome}</td>
+                      <td className="py-3 px-4">{p.categoria}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${p.qtd <= 3 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {p.qtd} unidades
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="space-y-1">
+                          <div className="font-semibold text-gray-800">R$ {Number(p.preco).toFixed(2)}</div>
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="Novo preço?" 
+                            value={precosReposicao[p.id] || ''}
+                            onChange={(e) => setPrecosReposicao({ ...precosReposicao, [p.id]: e.target.value })}
+                            className="w-32 bg-white text-gray-900 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            title="Digite o novo preço unitário caso tenha alterado na reposição"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs ${statusValidade.classe}`}>
+                          {statusValidade.texto}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex flex-col items-center gap-1.5 mx-auto w-44">
+                          <button 
+                            onClick={() => handleReporLocal(p)} 
+                            className="w-full bg-indigo-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-indigo-700 transition shadow-sm"
+                          >
+                            + Repor (+1)
+                          </button>
+                          <button 
+                            onClick={() => handleConsumoLocal(p)} 
+                            className="w-full bg-emerald-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-emerald-700 transition shadow-sm"
+                          >
+                            Registar Consumo (-1)
+                          </button>
+                          <button 
+                            onClick={() => abrirModalExcluir(p)} 
+                            className="w-full bg-rose-600 text-white py-1.5 px-3 rounded-xl text-xs font-medium hover:bg-rose-700 transition shadow-sm"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -246,7 +293,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
             </div>
             
             <p className="text-sm text-gray-600 leading-relaxed">
-              Tem certeza que deseja excluir permanentemente o item <strong className="text-gray-800">{produtoParaExcluir?.nome}</strong> do estoque?
+              Tem a certeza de que deseja excluir permanentemente o item <strong className="text-gray-800">{produtoParaExcluir?.nome}</strong> do stock?
             </p>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -267,14 +314,14 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
         </div>
       )}
 
-      {/* MODAL DE ALERTA CUSTOMIZADO (EX: ESTOQUE INSUFICIENTE) */}
+      {/* MODAL DE ALERTA CUSTOMIZADO (EX: STOCK INSUFICIENTE) */}
       {modalAlertaAberto && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4 animate-in fade-in zoom-in duration-200">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl text-xl">⚠️</div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">Atenção ao Estoque</h3>
+                <h3 className="font-bold text-gray-800 text-lg">Atenção ao Stock</h3>
                 <p className="text-xs text-gray-500">Operação não realizada.</p>
               </div>
             </div>
