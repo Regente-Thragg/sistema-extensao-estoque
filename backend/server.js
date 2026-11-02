@@ -162,6 +162,36 @@ app.delete('/api/historico', async (req, res) => {
   }
 });
 
+// 8. Buscar todas as categorias cadastradas
+app.get('/api/categorias', async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM categorias ORDER BY nome ASC');
+    res.json(resultado.rows);
+  } catch (err) {
+    console.error('Erro ao buscar categorias:', err.message);
+    res.status(500).json({ erro: 'Erro ao buscar categorias no banco.' });
+  }
+});
+
+// 9. Cadastrar uma nova categoria personalizada
+app.post('/api/categorias', async (req, res) => {
+  const { nome } = req.body;
+  if (!nome) {
+    return res.status(400).json({ erro: 'O nome da categoria é obrigatório.' });
+  }
+  try {
+    const query = 'INSERT INTO categorias (nome) VALUES ($1) RETURNING *';
+    const resultado = await pool.query(query, [nome.trim()]);
+    res.status(201).json(resultado.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') { // Violação de chave única (categoria duplicada)
+      return res.status(400).json({ erro: 'Esta categoria já existe!' });
+    }
+    console.error('Erro ao cadastrar categoria:', err.message);
+    res.status(500).json({ erro: 'Erro ao cadastrar categoria no banco.' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT} conectado ao Supabase com sucesso!`);
