@@ -263,24 +263,24 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
                         </span>
                       </td>
                       <td className="py-3 px-3 text-center">
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 min-w-[200px]">
+                        <div className="flex flex-row items-center justify-center gap-1.5">
                           <button 
                             onClick={() => handleReporLocal(p)} 
-                            className="w-full sm:w-auto bg-indigo-600 text-white py-1.5 px-2.5 rounded-lg text-xs font-medium hover:bg-indigo-700 transition shadow-sm"
+                            className="w-24 bg-indigo-600 text-white py-1.5 px-2 rounded-lg text-xs font-medium hover:bg-indigo-700 transition shadow-sm text-center"
                             title="Repor +1"
                           >
                             + Repor
                           </button>
                           <button 
                             onClick={() => handleConsumoLocal(p)} 
-                            className="w-full sm:w-auto bg-emerald-600 text-white py-1.5 px-2.5 rounded-lg text-xs font-medium hover:bg-emerald-700 transition shadow-sm"
+                            className="w-24 bg-emerald-600 text-white py-1.5 px-2 rounded-lg text-xs font-medium hover:bg-emerald-700 transition shadow-sm text-center"
                             title="Consumo -1"
                           >
                             - Consumo
                           </button>
                           <button 
                             onClick={() => abrirModalExcluir(p)} 
-                            className="w-full sm:w-auto bg-rose-600 text-white py-1.5 px-2.5 rounded-lg text-xs font-medium hover:bg-rose-700 transition shadow-sm"
+                            className="w-24 bg-rose-600 text-white py-1.5 px-2 rounded-lg text-xs font-medium hover:bg-rose-700 transition shadow-sm text-center"
                           >
                             Excluir
                           </button>
