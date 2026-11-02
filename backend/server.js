@@ -40,12 +40,12 @@ app.get('/api/produtos', async (req, res) => {
   }
 });
 
-// 2. Criar um novo produto (Com registro automático no histórico de COMPRA)
+// 2. Criar um novo produto (Com suporte a validade e registro automático no histórico de COMPRA)
 app.post('/api/produtos', async (req, res) => {
-  const { nome, categoria, qtd, preco } = req.body;
+  const { nome, categoria, qtd, preco, validade } = req.body;
   try {
-    const query = 'INSERT INTO produtos (nome, categoria, qtd, preco) VALUES ($1, $2, $3, $4) RETURNING *';
-    const valores = [nome, categoria, qtd, preco];
+    const query = 'INSERT INTO produtos (nome, categoria, qtd, preco, validade) VALUES ($1, $2, $3, $4, $5) RETURNING *';
+    const valores = [nome, categoria, qtd, preco, validade || null];
     const resultado = await pool.query(query, valores);
     
     // Registra a adição inicial no histórico como COMPRA
