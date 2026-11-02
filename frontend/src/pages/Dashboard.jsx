@@ -59,7 +59,7 @@ export default function Dashboard() {
             <h3 className="text-3xl font-bold text-gray-800">{totalProdutos}</h3>
             <span className="text-xs text-gray-400 block pt-1">Produtos cadastrados</span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             📦
           </div>
         </div>
@@ -71,7 +71,7 @@ export default function Dashboard() {
             <h3 className="text-3xl font-bold text-rose-600">{estoqueBaixo}</h3>
             <span className="text-xs text-gray-400 block pt-1">Itens com 3 ou menos un</span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-rose-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             ⚠️
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function Dashboard() {
             <h3 className="text-2xl font-bold text-emerald-600">R$ {valorEstoque.toFixed(2)}</h3>
             <span className="text-xs text-gray-400 block pt-1">Custo total acumulado</span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             💰
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function Dashboard() {
             <h3 className="text-3xl font-bold text-amber-600">{totalNotificacoes}</h3>
             <span className="text-xs text-gray-400 block pt-1">Registros (3 meses)</span>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
+          <div className="w-16 h-16 min-w-[4rem] min-h-[4rem] rounded-2xl bg-amber-50 flex items-center justify-center text-2xl shadow-xs shrink-0">
             🔔
           </div>
         </div>
