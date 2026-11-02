@@ -47,7 +47,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-8">
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -65,7 +65,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Total de Itens</span>
-            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl text-lg">📦</span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-lg shrink-0">📦</div>
           </div>
           <div className="my-4">
             <h3 className="text-3xl font-bold text-gray-800">{totalProdutos}</h3>
@@ -77,7 +77,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Estoque Baixo</span>
-            <span className="p-2 bg-rose-50 text-rose-600 rounded-xl text-lg">⚠️</span>
+            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-lg shrink-0">⚠️</div>
           </div>
           <div className="my-4">
             <h3 className="text-3xl font-bold text-rose-600">{estoqueBaixo}</h3>
@@ -89,7 +89,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Valor em Estoque</span>
-            <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl text-lg">💰</span>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-lg shrink-0">💰</div>
           </div>
           <div className="my-4">
             <h3 className="text-2xl font-bold text-emerald-600">R$ {valorEstoque.toFixed(2)}</h3>
@@ -101,7 +101,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Notificações</span>
-            <span className="p-2 bg-amber-50 text-amber-600 rounded-xl text-lg">🔔</span>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-lg shrink-0">🔔</div>
           </div>
           <div className="my-4">
             <h3 className="text-3xl font-bold text-amber-600">{totalNotificacoes}</h3>
