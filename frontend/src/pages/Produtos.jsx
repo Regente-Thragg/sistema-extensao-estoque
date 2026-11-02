@@ -9,7 +9,6 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
   const [preco, setPreco] = useState('');
   const [validade, setValidade] = useState('');
 
-  // Estados para gerenciar as categorias dinâmicas
   const [categorias, setCategorias] = useState([]);
   const [novaCategoriaModal, setNovaCategoriaModal] = useState(false);
   const [nomeNovaCategoria, setNomeNovaCategoria] = useState('');
@@ -28,13 +27,11 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     setProdutos(produtosIniciais || []);
   }, [produtosIniciais]);
 
-  // Carrega as categorias cadastradas do backend ao iniciar
   useEffect(() => {
     async function carregarCategorias() {
       const lista = await buscarCategorias();
       if (lista && lista.length > 0) {
         setCategorias(lista);
-        // Define a primeira categoria como padrão se houver
         if (!categoria) setCategoria(lista[0].nome);
       }
     }
@@ -177,25 +174,26 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
           />
         </div>
         <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="block text-xs font-medium text-gray-600">Categoria</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
+          <div className="flex gap-2">
+            <select 
+              value={categoria} 
+              onChange={(e) => setCategoria(e.target.value)} 
+              className="flex-1 bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            >
+              {categorias.map((cat) => (
+                <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+              ))}
+            </select>
             <button 
               type="button" 
               onClick={() => setNovaCategoriaModal(true)} 
-              className="text-indigo-600 hover:text-indigo-800 text-xs font-semibold"
+              className="bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 px-3 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center"
+              title="Adicionar nova categoria"
             >
-              + Nova
+              +
             </button>
           </div>
-          <select 
-            value={categoria} 
-            onChange={(e) => setCategoria(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          >
-            {categorias.map((cat) => (
-              <option key={cat.id} value={cat.nome}>{cat.nome}</option>
-            ))}
-          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
