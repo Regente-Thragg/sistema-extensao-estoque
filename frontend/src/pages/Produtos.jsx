@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buscarCategorias, criarCategoria } from '../services/api';
 
 export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor, onConsumo, onExcluir }) {
   const [produtos, setProdutos] = useState(produtosIniciais || []);
@@ -7,6 +8,11 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
   const [qtd, setQtd] = useState('');
   const [preco, setPreco] = useState('');
   const [validade, setValidade] = useState('');
+
+  // Estados para gerenciar as categorias dinâmicas
+  const [categorias, setCategorias] = useState([]);
+  const [novaCategoriaModal, setNovaCategoriaModal] = useState(false);
+  const [nomeNovaCategoria, setNomeNovaCategoria] = useState('');
 
   const [precosReposicao, setPrecosReposicao] = useState({});
   const [busca, setBusca] = useState('');
@@ -21,6 +27,19 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
   useEffect(() => {
     setProdutos(produtosIniciais || []);
   }, [produtosIniciais]);
+
+  // Carrega as categorias cadastradas do backend ao iniciar
+  useEffect(() => {
+    async function carregarCategorias() {
+      const lista = await buscarCategorias();
+      if (lista && lista.length > 0) {
+        setCategorias(lista);
+        // Define a primeira categoria como padrão se houver
+        if (!categoria) setCategoria(lista[0].nome);
+      }
+    }
+    carregarCategorias();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +56,24 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     const resultado = await onCriar(novoProduto);
     if (resultado && !resultado.erro) {
       setProdutos([...produtos, resultado]);
-      setNome(''); setCategoria(''); setQtd(''); setPreco(''); setValidade('');
+      setNome(''); setQtd(''); setPreco(''); setValidade('');
+    }
+  };
+
+  const handleAdicionarCategoria = async (e) => {
+    e.preventDefault();
+    if (!nomeNovaCategoria.trim()) return;
+
+    const res = await criarCategoria(nomeNovaCategoria.trim());
+    if (res && !res.erro) {
+      const novaLista = [...categorias, res].sort((a, b) => a.nome.localeCompare(b.nome));
+      setCategorias(novaLista);
+      setCategoria(res.nome);
+      setNomeNovaCategoria('');
+      setNovaCategoriaModal(false);
+    } else {
+      setMensagemAlerta(res?.erro || 'Erro ao criar categoria.');
+      setModalAlertaAberto(true);
     }
   };
 
@@ -116,7 +152,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     }
   };
 
-  const categoriasUnicas = ['TODAS', ...new Set(produtos.map(p => p.categoria))];
+  const categoriasFiltroOpcoes = ['TODAS', ...categorias.map(c => c.nome)];
 
   const produtosFiltrados = produtos.filter(p => {
     const correspondeNome = p.nome.toLowerCase().includes(busca.toLowerCase());
@@ -141,14 +177,25 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
-          <input 
-            type="text" 
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-xs font-medium text-gray-600">Categoria</label>
+            <button 
+              type="button" 
+              onClick={() => setNovaCategoriaModal(true)} 
+              className="text-indigo-600 hover:text-indigo-800 text-xs font-semibold"
+            >
+              + Nova
+            </button>
+          </div>
+          <select 
             value={categoria} 
             onChange={(e) => setCategoria(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
-            placeholder="Ex: Alimentos" 
-          />
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          >
+            {categorias.map((cat) => (
+              <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
@@ -204,7 +251,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
             onChange={(e) => setCategoriaFiltro(e.target.value)}
             className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           >
-            {categoriasUnicas.map((cat, index) => (
+            {categoriasFiltroOpcoes.map((cat, index) => (
               <option key={index} value={cat}>{cat}</option>
             ))}
           </select>
@@ -294,6 +341,48 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
           </table>
         </div>
       </div>
+
+      {/* MODAL PARA CADASTRAR NOVA CATEGORIA */}
+      {novaCategoriaModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xl">🏷️</div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-lg">Nova Categoria</h3>
+                <p className="text-xs text-gray-500">Adicione uma categoria personalizada.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleAdicionarCategoria} className="space-y-3">
+              <input 
+                type="text" 
+                value={nomeNovaCategoria}
+                onChange={(e) => setNomeNovaCategoria(e.target.value)}
+                placeholder="Ex: Laticínios, Limpeza..."
+                className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                autoFocus
+              />
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setNovaCategoriaModal(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
       {modalExcluirAberto && (
