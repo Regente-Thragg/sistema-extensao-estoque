@@ -85,3 +85,27 @@ export async function limparHistorico() {
     return null;
   }
 }
+
+export async function buscarCategorias() {
+  try {
+    const resposta = await fetch(`${API_URL}/categorias`);
+    return await resposta.json();
+  } catch (erro) {
+    console.error('Erro ao buscar categorias:', erro);
+    return [];
+  }
+}
+
+export async function criarCategoria(nome) {
+  try {
+    const resposta = await fetch(`${API_URL}/categorias`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome }),
+    });
+    return await resposta.json();
+  } catch (erro) {
+    console.error('Erro ao cadastrar categoria:', erro);
+    return null;
+  }
+}
