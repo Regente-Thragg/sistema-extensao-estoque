@@ -175,24 +175,22 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
-          <div className="space-y-1.5">
-            <select 
-              value={categoria} 
-              onChange={(e) => setCategoria(e.target.value)} 
-              className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            >
-              {categorias.map((cat) => (
-                <option key={cat.id} value={cat.nome}>{cat.nome}</option>
-              ))}
-            </select>
-            <button 
-              type="button" 
-              onClick={() => setNovaCategoriaModal(true)} 
-              className="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-1 rounded-lg text-xs font-semibold transition text-center"
-            >
-              + Adicionar Categoria
-            </button>
-          </div>
+          <select 
+            value={categoria} 
+            onChange={(e) => setCategoria(e.target.value)} 
+            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          >
+            {categorias.map((cat) => (
+              <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+            ))}
+          </select>
+          <button 
+            type="button" 
+            onClick={() => setNovaCategoriaModal(true)} 
+            className="mt-1.5 w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-1 rounded-lg text-xs font-semibold transition text-center"
+          >
+            + Adicionar Categoria
+          </button>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
