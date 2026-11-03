@@ -114,10 +114,10 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
   };
 
   const formatarValidade = (dataValidade) => {
-    if (!dataValidade) return { texto: 'Não informada', classe: 'bg-gray-100 text-gray-500' };
+    if (!dataValidade) return { texto: 'Não informada', classe: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' };
 
     const partes = String(dataValidade).split('T')[0].split('-');
-    if (partes.length !== 3) return { texto: 'Não informada', classe: 'bg-gray-100 text-gray-500' };
+    if (partes.length !== 3) return { texto: 'Não informada', classe: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' };
 
     const ano = parseInt(partes[0], 10);
     const mes = parseInt(partes[1], 10) - 1;
@@ -125,7 +125,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
 
     const validadeItem = new Date(ano, mes, dia);
     if (isNaN(validadeItem.getTime())) {
-      return { texto: 'Não informada', classe: 'bg-gray-100 text-gray-500' };
+      return { texto: 'Não informada', classe: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' };
     }
 
     const hoje = new Date();
@@ -139,13 +139,13 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
     const dataFormatada = `${diaFmt}/${mesFmt}/${ano}`;
 
     if (diffDias < 0) {
-      return { texto: `Vencido (${dataFormatada})`, classe: 'bg-red-100 text-red-700 font-bold' };
+      return { texto: `Vencido (${dataFormatada})`, classe: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 font-bold' };
     } else if (diffDias === 0) {
-      return { texto: `Vence hoje! (${dataFormatada})`, classe: 'bg-red-100 text-red-700 font-bold' };
+      return { texto: `Vence hoje! (${dataFormatada})`, classe: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 font-bold' };
     } else if (diffDias <= 7) {
-      return { texto: `Vence em ${diffDias}d (${dataFormatada})`, classe: 'bg-amber-100 text-amber-800 font-semibold' };
+      return { texto: `Vence em ${diffDias}d (${dataFormatada})`, classe: 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold' };
     } else {
-      return { texto: dataFormatada, classe: 'bg-emerald-50 text-emerald-700 font-medium' };
+      return { texto: dataFormatada, classe: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium' };
     }
   };
 
@@ -159,33 +159,33 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
 
   return (
     <div className="p-4 md:p-8 space-y-6 relative">
-      <h1 className="text-2xl font-bold text-gray-800">Controle de Despensa e Estoque Doméstico</h1>
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Controle de Despensa e Estoque Doméstico</h1>
 
       {/* Formulário de Cadastro */}
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Nome do Item</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nome do Item</label>
           <input 
             type="text" 
             value={nome} 
             onChange={(e) => setNome(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
             placeholder="Ex: Arroz 5kg" 
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Categoria</label>
           <button 
             type="button" 
             onClick={() => setNovaCategoriaModal(true)} 
-            className="mb-1.5 w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-1 rounded-lg text-xs font-semibold transition text-center"
+            className="mb-1.5 w-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 py-1 rounded-lg text-xs font-semibold transition text-center"
           >
             + Adicionar Categoria
           </button>
           <select 
             value={categoria} 
             onChange={(e) => setCategoria(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           >
             {categorias.map((cat) => (
               <option key={cat.id} value={cat.nome}>{cat.nome}</option>
@@ -193,33 +193,33 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Quantidade</label>
           <input 
             type="number" 
             value={qtd} 
             onChange={(e) => setQtd(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
             placeholder="0" 
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Preço Unitário (R$)</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Preço Unitário (R$)</label>
           <input 
             type="number" 
             step="0.01" 
             value={preco} 
             onChange={(e) => setPreco(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
             placeholder="0.00" 
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Validade</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Validade</label>
           <input 
             type="date" 
             value={validade} 
             onChange={(e) => setValidade(e.target.value)} 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+            className="[color-scheme:light] dark:[color-scheme:dark] w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
           />
         </div>
         <button type="submit" className="w-full bg-indigo-600 text-white font-medium py-2 px-3 rounded-xl hover:bg-indigo-700 transition shadow-sm text-sm h-[38px]">
@@ -228,23 +228,23 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
       </form>
 
       {/* Filtros e Busca */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="w-full md:w-1/2">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Pesquisar por Nome</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Pesquisar por Nome</label>
           <input 
             type="text" 
             value={busca} 
             onChange={(e) => setBusca(e.target.value)} 
             placeholder="Digite para buscar um item..." 
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         </div>
         <div className="w-full md:w-1/3">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Filtrar por Categoria</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Filtrar por Categoria</label>
           <select 
             value={categoriaFiltro} 
             onChange={(e) => setCategoriaFiltro(e.target.value)}
-            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           >
             {categoriasFiltroOpcoes.map((cat, index) => (
               <option key={index} value={cat}>{cat}</option>
@@ -254,12 +254,12 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
       </div>
 
       {/* Tabela de Produtos */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Lista de Itens ({produtosFiltrados.length} encontrados)</h3>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Lista de Itens ({produtosFiltrados.length} encontrados)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
-              <tr className="border-b border-gray-200 text-gray-500 text-sm">
+              <tr className="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-sm">
                 <th className="py-3 px-3">Nome</th>
                 <th className="py-3 px-3">Categoria</th>
                 <th className="py-3 px-3">Quantidade</th>
@@ -268,33 +268,33 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
                 <th className="py-3 px-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="text-sm text-gray-700">
+            <tbody className="text-sm text-gray-700 dark:text-gray-200">
               {produtosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-4 text-center text-gray-400">Nenhum item encontrado com os filtros atuais.</td>
+                  <td colSpan="6" className="py-4 text-center text-gray-400 dark:text-gray-500">Nenhum item encontrado com os filtros atuais.</td>
                 </tr>
               ) : (
                 produtosFiltrados.map((p) => {
                   const statusValidade = formatarValidade(p.validade);
                   return (
-                    <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                      <td className="py-3 px-3 font-semibold text-gray-800">{p.nome}</td>
+                    <tr key={p.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                      <td className="py-3 px-3 font-semibold text-gray-800 dark:text-gray-100">{p.nome}</td>
                       <td className="py-3 px-3">{p.categoria}</td>
                       <td className="py-3 px-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-block ${p.qtd <= 3 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-block ${p.qtd <= 3 ? 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300' : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'}`}>
                           {p.qtd} un
                         </span>
                       </td>
                       <td className="py-3 px-3">
                         <div className="space-y-1">
-                          <div className="font-semibold text-gray-800">R$ {Number(p.preco).toFixed(2)}</div>
+                          <div className="font-semibold text-gray-800 dark:text-gray-100">R$ {Number(p.preco).toFixed(2)}</div>
                           <input 
                             type="number" 
                             step="0.01"
                             placeholder="Novo preço?" 
                             value={precosReposicao[p.id] || ''}
                             onChange={(e) => setPrecosReposicao({ ...precosReposicao, [p.id]: e.target.value })}
-                            className="w-28 bg-white text-gray-900 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-28 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             title="Digite o novo preço unitário caso tenha alterado na reposição"
                           />
                         </div>
@@ -340,12 +340,12 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
       {/* MODAL PARA CADASTRAR NOVA CATEGORIA */}
       {novaCategoriaModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xl">🏷️</div>
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl text-xl">🏷️</div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">Nova Categoria</h3>
-                <p className="text-xs text-gray-500">Adicione uma categoria personalizada.</p>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Nova Categoria</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Adicione uma categoria personalizada.</p>
               </div>
             </div>
 
@@ -355,7 +355,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
                 value={nomeNovaCategoria}
                 onChange={(e) => setNomeNovaCategoria(e.target.value)}
                 placeholder="Ex: Laticínios, Limpeza..."
-                className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 autoFocus
               />
 
@@ -363,7 +363,7 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
                 <button 
                   type="button"
                   onClick={() => setNovaCategoriaModal(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition"
                 >
                   Cancelar
                 </button>
@@ -382,23 +382,23 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
       {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
       {modalExcluirAberto && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl text-xl">⚠️</div>
+              <div className="p-3 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl text-xl">⚠️</div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">Confirmar Exclusão</h3>
-                <p className="text-xs text-gray-500">Esta ação não poderá ser desfeita.</p>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Confirmar Exclusão</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Esta ação não poderá ser desfeita.</p>
               </div>
             </div>
             
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Tem certeza que deseja excluir permanentemente o item <strong className="text-gray-800">{produtoParaExcluir?.nome}</strong> do estoque?
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              Tem certeza que deseja excluir permanentemente o item <strong className="text-gray-800 dark:text-gray-100">{produtoParaExcluir?.nome}</strong> do estoque?
             </p>
 
             <div className="flex justify-end gap-3 pt-2">
               <button 
                 onClick={() => setModalExcluirAberto(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition"
               >
                 Cancelar
               </button>
@@ -416,16 +416,16 @@ export default function Produtos({ produtos: produtosIniciais, onCriar, onRepor,
       {/* MODAL DE ALERTA CUSTOMIZADO */}
       {modalAlertaAberto && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl text-xl">⚠️</div>
+              <div className="p-3 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl text-xl">⚠️</div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">Atenção ao Estoque</h3>
-                <p className="text-xs text-gray-500">Operação não realizada!</p>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Atenção ao Estoque</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Operação não realizada!</p>
               </div>
             </div>
             
-            <p className="text-sm text-gray-600 leading-relaxed">
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
               {mensagemAlerta}
             </p>
 
