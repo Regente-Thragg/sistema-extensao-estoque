@@ -225,7 +225,7 @@ export default function App() {
       {/* Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
         {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} />}
-        {telaAtival === 'produtos' && ( // Nota: mantido telaAtiva === 'produtos'
+        {telaAtiva === 'produtos' && ( // Nota: mantido telaAtiva === 'produtos'
           <Produtos
             produtos={produtos}
             onCriar={handleCriarProduto}
