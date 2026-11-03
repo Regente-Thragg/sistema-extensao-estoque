@@ -1,42 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { buscarProdutos, buscarHistorico } from '../services/api';
+import { exportarParaCSV } from '../utils/exportCSV';
+import { exportarParaPDF } from '../utils/exportPDF';
 
-export default function Relatorios() {
-  const [produtos, setProdutos] = useState([]);
+export default function Relatorios({ produtos: produtosProp }) {
+  const [produtos, setProdutos] = useState(produtosProp || []);
   const [historico, setHistorico] = useState([]);
 
   useEffect(() => {
     async function carregarDados() {
-      const dadosProdutos = await buscarProdutos();
+      if (!produtosProp || produtosProp.length === 0) {
+        const dadosProdutos = await buscarProdutos();
+        setProdutos(dadosProdutos || []);
+      } else {
+        setProdutos(produtosProp);
+      }
       const dadosHistorico = await buscarHistorico();
-      setProdutos(dadosProdutos || []);
       setHistorico(dadosHistorico || []);
     }
     carregarDados();
-  }, []);
+  }, [produtosProp]);
 
   // Cálculos dos indicadores principais
   const totalItens = produtos.length;
-  const quantidadeTotalEstoque = produtos.reduce((acc, p) => acc + Number(p.qtd), 0);
-  const valorTotalEstoque = produtos.reduce((acc, p) => acc + (Number(p.qtd) * Number(p.preco)), 0);
-  const produtosEstoqueBaixo = produtos.filter(p => p.qtd <= 3);
+  const quantidadeTotalEstoque = produtos.reduce((acc, p) => acc + Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)), 0);
+  const valorTotalEstoque = produtos.reduce((acc, p) => acc + (Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)) * Number(p.preco || 0)), 0);
+  const produtosEstoqueBaixo = produtos.filter(p => Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)) <= 3);
 
   // Agrupamento para o gráfico de consumo/distribuição por categoria
   const categoriasMap = {};
   produtos.forEach(p => {
     const cat = p.categoria || 'Geral';
-    categoriasMap[cat] = (categoriasMap[cat] || 0) + Number(p.qtd);
+    const q = Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0));
+    categoriasMap[cat] = (categoriasMap[cat] || 0) + q;
   });
 
   // Total de itens retirados com base no histórico de consumo
   const totalHistoricoConsumo = historico
     .filter(h => h.tipo === 'CONSUMO')
-    .reduce((acc, h) => acc + Number(h.quantidade), 0);
+    .reduce((acc, h) => acc + Number(h.quantidade || 0), 0);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Relatórios e Gráficos de Consumo</h1>
-      <p className="text-sm text-gray-600 dark:text-gray-300">Acompanhe métricas financeiras, estoque crítico e o panorama visual de consumo da sua despensa.</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Relatórios e Gráficos de Consumo</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300">Acompanhe métricas financeiras, estoque crítico e exporte dados para a documentação.</p>
+        </div>
+        
+        {/* Botões de Exportação */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => exportarParaPDF(produtos)}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow-sm transition"
+          >
+            📄 Baixar PDF
+          </button>
+          <button
+            onClick={() => exportarParaCSV(produtos)}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow-sm transition"
+          >
+            📊 Baixar CSV
+          </button>
+        </div>
+      </div>
 
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -119,17 +146,20 @@ export default function Relatorios() {
                 </tr>
               </thead>
               <tbody className="text-sm text-gray-700 dark:text-gray-200">
-                {produtosEstoqueBaixo.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-red-50 dark:hover:bg-red-500/10">
-                    <td className="py-3 px-4 font-medium">{p.nome}</td>
-                    <td className="py-3 px-4">{p.categoria}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded text-xs font-bold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300">
-                        {p.qtd} unidades
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {produtosEstoqueBaixo.map((p) => {
+                  const qtdVal = p.quantidade !== undefined ? p.quantidade : p.qtd;
+                  return (
+                    <tr key={p.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-red-50 dark:hover:bg-red-500/10">
+                      <td className="py-3 px-4 font-medium">{p.nome || p.nome_produto}</td>
+                      <td className="py-3 px-4">{p.categoria || 'Geral'}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-1 rounded text-xs font-bold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300">
+                          {qtdVal} unidades
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
