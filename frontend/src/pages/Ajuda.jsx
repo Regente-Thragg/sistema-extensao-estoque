@@ -8,7 +8,7 @@ export default function Ajuda() {
       descricao: 'Atendimento rápido e direto via mensagem',
       icone: '💬',
       cor: 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-400',
-      link: 'https://wa.me/55SEUNUMEROESSEU?text=Olá,%20preciso%20de%20suporte%20no%20sistema%20GestãoFácil!',
+      link: 'https://wa.me/qr/T2FK45XGPZXXJ1',
       botaoTexto: 'Enviar Mensagem'
     },
     {
@@ -16,7 +16,7 @@ export default function Ajuda() {
       descricao: 'Acompanhe novidades e bastidores do projeto',
       icone: '📸',
       cor: 'bg-pink-50 text-pink-600 border-pink-100 hover:bg-pink-100 dark:bg-pink-950/40 dark:border-pink-900 dark:text-pink-400',
-      link: 'https://instagram.com/SEU_INSTAGRAM',
+      link: 'https://www.instagram.com/gamma_jack_2005?vrfl=MWdvb2VoaHAyOWwxOA==',
       botaoTexto: 'Seguir no Instagram'
     },
     {
@@ -24,7 +24,7 @@ export default function Ajuda() {
       descricao: 'Conecte-se e tire dúvidas na rede social',
       icone: '👥',
       cor: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-400',
-      link: 'https://facebook.com/SEU_FACEBOOK',
+      link: 'https://www.facebook.com/share/1A7v7vHeKm/',
       botaoTexto: 'Acessar Facebook'
     },
     {
@@ -32,7 +32,7 @@ export default function Ajuda() {
       descricao: 'Envie um relato detalhado ou solicitação formal',
       icone: '✉️',
       cor: 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900 dark:text-indigo-400',
-      link: 'mailto:SEU_EMAIL@gmail.com?subject=Suporte%20-%20GestãoFácil',
+      link: 'mailto:shikigamispm@gmail.com?subject=Suporte%20-%20GestãoFácil',
       botaoTexto: 'Enviar E-mail'
     }
   ];
