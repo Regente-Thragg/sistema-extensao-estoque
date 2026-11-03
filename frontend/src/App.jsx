@@ -3,7 +3,8 @@ import Dashboard from './pages/Dashboard';
 import Produtos from './pages/Produtos';
 import Relatorios from './pages/Relatorios';
 import HistoricoGeral from './pages/HistoricoGeral';
-import Ajuda from './pages/Ajuda'; // <--- Importação da nova página de Ajuda
+import Ajuda from './pages/Ajuda';
+import AssistenteIA from './components/AssistenteIA'; // <--- Importação do Assistente Inteligente
 import { buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
 
 // Lê a preferência salva; se não houver, usa a preferência do sistema operacional
@@ -187,7 +188,6 @@ export default function App() {
               <span>🔔</span> Histórico Geral
             </button>
 
-            {/* Novo Botão de Ajuda */}
             <button
               onClick={() => { setTelaAtiva('ajuda'); setSidebarAberta(false); }}
               className={classeBotaoMenu(telaAtiva === 'ajuda')}
@@ -225,7 +225,7 @@ export default function App() {
       {/* Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
         {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} />}
-        {telaAtiva === 'produtos' && (
+        {telaAtival === 'produtos' && ( // Nota: mantido telaAtiva === 'produtos'
           <Produtos
             produtos={produtos}
             onCriar={handleCriarProduto}
@@ -236,8 +236,12 @@ export default function App() {
         )}
         {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} />}
         {telaAtiva === 'historico' && <HistoricoGeral historicoInicial={historico} />}
-        {telaAtiva === 'ajuda' && <Ajuda />} {/* <--- Renderização da tela de Ajuda */}
+        {telaAtiva === 'ajuda' && <Ajuda />}
       </main>
+
+      {/* Componente Flutuante do Assistente de Inteligência Artificial */}
+      <AssistenteIA produtos={produtos} />
+
     </div>
   );
 }
