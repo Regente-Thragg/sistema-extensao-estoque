@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard';
 import Produtos from './pages/Produtos';
 import Relatorios from './pages/Relatorios';
 import HistoricoGeral from './pages/HistoricoGeral';
+import Ajuda from './pages/Ajuda'; // <--- Importação da nova página de Ajuda
 import { buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
 
 // Lê a preferência salva; se não houver, usa a preferência do sistema operacional
@@ -185,6 +186,14 @@ export default function App() {
             >
               <span>🔔</span> Histórico Geral
             </button>
+
+            {/* Novo Botão de Ajuda */}
+            <button
+              onClick={() => { setTelaAtiva('ajuda'); setSidebarAberta(false); }}
+              className={classeBotaoMenu(telaAtiva === 'ajuda')}
+            >
+              <span>❓</span> Ajuda
+            </button>
           </nav>
         </div>
 
@@ -227,6 +236,7 @@ export default function App() {
         )}
         {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} />}
         {telaAtiva === 'historico' && <HistoricoGeral historicoInicial={historico} />}
+        {telaAtiva === 'ajuda' && <Ajuda />} {/* <--- Renderização da tela de Ajuda */}
       </main>
     </div>
   );
