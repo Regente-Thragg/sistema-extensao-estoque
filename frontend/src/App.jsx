@@ -5,6 +5,7 @@ import Relatorios from './pages/Relatorios';
 import HistoricoGeral from './pages/HistoricoGeral';
 import Ajuda from './pages/Ajuda';
 import AssistenteIA from './components/AssistenteIA'; // <--- Importação do Assistente Inteligente
+import Configuracoes from './pages/Configuracoes';
 import { buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
 
 // Lê a preferência salva; se não houver, usa a preferência do sistema operacional
@@ -194,6 +195,13 @@ export default function App() {
             >
               <span>❓</span> Ajuda
             </button>
+
+            <button
+              onClick={() => { setTelaAtiva('configuracoes'); setSidebarAberta(false); }}
+              className={classeBotaoMenu(telaAtiva === 'configuracoes')}
+            >
+              <span>⚙️</span> Configurações
+            </button>
           </nav>
         </div>
 
@@ -237,6 +245,7 @@ export default function App() {
         {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} />}
         {telaAtiva === 'historico' && <HistoricoGeral historicoInicial={historico} />}
         {telaAtiva === 'ajuda' && <Ajuda />}
+        {telaAtiva === 'configuracoes' && <Configuracoes />}
       </main>
 
       {/* Componente Flutuante do Assistente de Inteligência Artificial */}
