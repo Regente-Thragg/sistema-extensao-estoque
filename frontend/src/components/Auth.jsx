@@ -436,7 +436,7 @@ export default function Auth({ onLoginSucesso }) {
                   type="text"
                   autoComplete="off"
                   data-lpignore="true"
-                  placeholder="CEP (ex: 79400-000)"
+                  placeholder="CEP"
                   value={endereco.cep}
                   onChange={handleCepChange}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
