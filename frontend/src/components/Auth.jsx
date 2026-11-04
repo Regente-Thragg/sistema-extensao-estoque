@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/api';
 
 export default function Auth({ onLoginSucesso }) {
-  // Modos da tela: 'login', 'cadastro', 'esqueci-senha', 'verificar-codigo', 'nova-senha'
-  const [modo, setModo] = useState('login'); 
+  const [modo, setModo] = useState('login'); // 'login', 'cadastro', 'esqueci-senha', 'verificar-codigo', 'nova-senha'
   
-  // Tipo de cadastro/login ('email' ou 'google')
-  const [tipoEmail, setTipoEmail] = useState(false);
+  // Visibilidade de senha
+  const [mostrarSenhaLogin, setMostrarSenhaLogin] = useState(false);
+  const [mostrarSenhaCadastro, setMostrarSenhaCadastro] = useState(false);
+  const [mostrarSenhaNova, setMostrarSenhaNova] = useState(false);
 
   // Campos do formulário
   const [email, setEmail] = useState('');
@@ -15,8 +16,22 @@ export default function Auth({ onLoginSucesso }) {
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
   const [cpf, setCpf] = useState('');
-  const [endereco, setEndereco] = useState({ cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '' });
+  
+  // Endereço detalhado
+  const [endereco, setEndereco] = useState({ 
+    cep: '', 
+    rua: '', 
+    numero: '', 
+    semNumero: false, 
+    bairro: '', 
+    cidade: '', 
+    estado: '', 
+    complemento: '', 
+    descricao: '' 
+  });
+
   const [termosAceitos, setTermosAceitos] = useState(false);
+  const [modalTermosAberto, setModalTermosAberto] = useState(false);
   const [codigoOtp, setCodigoOtp] = useState('');
 
   // Estados de controle
@@ -25,7 +40,7 @@ export default function Auth({ onLoginSucesso }) {
   const [carregando, setCarregando] = useState(false);
   const [tempoReenvio, setTempoReenvio] = useState(0);
 
-  // Temporizador para o botão "Reenviar código" (120 segundos / 2 minutos)
+  // Temporizador para reenviar código (120 segundos)
   useEffect(() => {
     let timer;
     if (tempoReenvio > 0) {
@@ -34,25 +49,47 @@ export default function Auth({ onLoginSucesso }) {
     return () => clearInterval(timer);
   }, [tempoReenvio]);
 
-  // Validações em tempo real
+  // Validações em tempo real atualizadas
   const validarUsername = (user) => {
     const tamanho = user.length >= 8 && user.length <= 16;
     const temMaiuscula = /[A-Z]/.test(user);
-    const caracteresValidos = /^[a-zA-Z0-9!@#$%&,.+\-*/]+$/.test(user);
-    return { tamanho, temMaiuscula, caracteresValidos, valido: tamanho && temMaiuscula && caracteresValidos };
+    const temMinuscula = /[a-z]/.test(user);
+    const temNumero = /\d/.test(user);
+    const temEspecial = /[@#%&*-_+.]/.test(user);
+    const caracteresValidos = /^[a-zA-Z0-9@#%&*-_+.]+$/.test(user);
+    return {
+      tamanho,
+      temMaiuscula,
+      temMinuscula,
+      temNumero,
+      temEspecial,
+      caracteresValidos,
+      valido: tamanho && temMaiuscula && temMinuscula && temNumero && temEspecial && caracteresValidos
+    };
   };
 
   const validarSenha = (pass) => {
     const tamanho = pass.length >= 6 && pass.length <= 12;
+    const temMaiuscula = /[A-Z]/.test(pass);
+    const temMinuscula = /[a-z]/.test(pass);
     const temNumero = /\d/.test(pass);
-    const temEspecial = /[!@#$%&,.+\-*/]/.test(pass);
-    return { tamanho, temNumero, temEspecial, valido: tamanho && temNumero && temEspecial };
+    const temEspecial = /[@#%&*-_+.]/.test(pass);
+    const caracteresValidos = /^[a-zA-Z0-9@#%&*-_+.]+$/.test(pass);
+    return {
+      tamanho,
+      temMaiuscula,
+      temMinuscula,
+      temNumero,
+      temEspecial,
+      caracteresValidos,
+      valido: tamanho && temMaiuscula && temMinuscula && temNumero && temEspecial && caracteresValidos
+    };
   };
 
   const statusUser = validarUsername(nomeUsuario);
   const statusPass = validarSenha(senha);
 
-  // Máscara de CPF (000.000.000-00)
+  // Máscaras
   const formatarCpf = (valor) => {
     return valor
       .replace(/\D/g, '')
@@ -62,7 +99,6 @@ export default function Auth({ onLoginSucesso }) {
       .substring(0, 14);
   };
 
-  // Máscara de Data (DD/MM/YYYY)
   const formatarData = (valor) => {
     return valor
       .replace(/\D/g, '')
@@ -71,16 +107,46 @@ export default function Auth({ onLoginSucesso }) {
       .substring(0, 10);
   };
 
-  // Login com Google
+  const formatarCep = (valor) => {
+    return valor
+      .replace(/\D/g, '')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .substring(0, 9);
+  };
+
+  // Buscar CEP via API pública ViaCEP
+  const handleCepChange = async (e) => {
+    const cepFormatado = formatarCep(e.target.value);
+    setEndereco((prev) => ({ ...prev, cep: cepFormatado }));
+
+    const cepLimpo = cepFormatado.replace(/\D/g, '');
+    if (cepLimpo.length === 8) {
+      try {
+        const resposta = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+        const dados = await resposta.json();
+        if (!dados.erro) {
+          setEndereco((prev) => ({
+            ...prev,
+            rua: dados.logradouro || '',
+            bairro: dados.bairro || '',
+            cidade: dados.localidade || '',
+            estado: dados.uf || ''
+          }));
+        }
+      } catch (err) {
+        console.error('Erro ao buscar CEP:', err);
+      }
+    }
+  };
+
+  // Login Google
   const handleLoginGoogle = async () => {
     setErro('');
     setCarregando(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
+        options: { redirectTo: window.location.origin }
       });
       if (error) throw error;
     } catch (err) {
@@ -89,7 +155,7 @@ export default function Auth({ onLoginSucesso }) {
     }
   };
 
-  // Envio do formulário principal (Login ou Cadastro)
+  // Submeter formulários
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
@@ -99,6 +165,9 @@ export default function Auth({ onLoginSucesso }) {
       if (!statusUser.valido) return setErro('O nome de usuário não atende aos requisitos mínimos.');
       if (!statusPass.valido) return setErro('A senha não atende aos requisitos mínimos.');
       if (!termosAceitos) return setErro('Você deve aceitar os termos de uso e política de privacidade.');
+      if (endereco.semNumero && !endereco.descricao.trim()) {
+        return setErro('Como a residência não possui número, a Descrição é obrigatória para identificação.');
+      }
     }
 
     setCarregando(true);
@@ -132,7 +201,6 @@ export default function Auth({ onLoginSucesso }) {
     }
   };
 
-  // Solicitar recuperação de senha
   const handleEsqueciSenha = async (e) => {
     e.preventDefault();
     setErro('');
@@ -140,9 +208,9 @@ export default function Auth({ onLoginSucesso }) {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
-      setSucesso('Código/link de recuperação enviado para o seu e-mail!');
+      setSucesso('Código de recuperação enviado para o seu e-mail!');
       setModo('verificar-codigo');
-      setTempoReenvio(120); // Cooldown de 2 minutos
+      setTempoReenvio(120);
     } catch (err) {
       setErro(err.message || 'Erro ao enviar e-mail de recuperação.');
     } finally {
@@ -152,7 +220,7 @@ export default function Auth({ onLoginSucesso }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-lg p-8 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 space-y-6 my-8">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-xl p-8 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 space-y-6 my-8">
         
         {/* Cabeçalho */}
         <div className="text-center space-y-2">
@@ -167,11 +235,10 @@ export default function Auth({ onLoginSucesso }) {
           </p>
         </div>
 
-        {/* Mensagens */}
         {erro && <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-600 rounded-xl text-xs font-medium">{erro}</div>}
         {sucesso && <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-medium">{sucesso}</div>}
 
-        {/* BOTÃO GOOGLE COMUM */}
+        {/* GOOGLE BUTTON */}
         {(modo === 'login' || modo === 'cadastro') && (
           <div className="space-y-3">
             <button
@@ -195,7 +262,7 @@ export default function Auth({ onLoginSucesso }) {
           </div>
         )}
 
-        {/* FORMULÁRIO DE LOGIN */}
+        {/* LOGIN FORM */}
         {modo === 'login' && (
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
             <div className="space-y-1">
@@ -224,17 +291,26 @@ export default function Auth({ onLoginSucesso }) {
                   Esqueceu a senha?
                 </button>
               </div>
-              <input
-                type="password"
-                id="current-password"
-                name="password"
-                autoComplete="current-password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500"
-                placeholder="senha"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={mostrarSenhaLogin ? "text" : "password"}
+                  id="current-password"
+                  name="password"
+                  autoComplete="current-password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500"
+                  placeholder="senha"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenhaLogin(!mostrarSenhaLogin)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm"
+                >
+                  {mostrarSenhaLogin ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
 
             <button
@@ -247,7 +323,7 @@ export default function Auth({ onLoginSucesso }) {
           </form>
         )}
 
-        {/* FORMULÁRIO DE CADASTRO DETALHADO */}
+        {/* CADASTRO FORM */}
         {modo === 'cadastro' && (
           <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto px-1" autoComplete="on">
             <div className="space-y-1">
@@ -263,7 +339,7 @@ export default function Auth({ onLoginSucesso }) {
               />
             </div>
 
-            {/* Nome de Usuário e Requisitos */}
+            {/* Nome de Usuário */}
             <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome de Usuário</label>
               <input
@@ -278,32 +354,47 @@ export default function Auth({ onLoginSucesso }) {
               <ul className="text-[11px] space-y-0.5 pt-1">
                 <li className={statusUser.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 8 a 16 caracteres</li>
                 <li className={statusUser.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
-                <li className={statusUser.caracteresValidos ? 'text-emerald-600' : 'text-red-500'}>• Caracteres especiais permitidos (!@#$%&,.+-/*)</li>
+                <li className={statusUser.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
+                <li className={statusUser.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
+                <li className={statusUser.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
+                <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
               </ul>
             </div>
 
-            {/* Senha e Requisitos */}
+            {/* Senha */}
             <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Senha</label>
-              <input
-                type="password"
-                id="new-password"
-                name="new-password"
-                autoComplete="new-password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                placeholder="senha"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={mostrarSenhaCadastro ? "text" : "password"}
+                  id="new-password"
+                  name="new-password"
+                  autoComplete="new-password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                  placeholder="senha"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenhaCadastro(!mostrarSenhaCadastro)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm"
+                >
+                  {mostrarSenhaCadastro ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
               <ul className="text-[11px] space-y-0.5 pt-1">
                 <li className={statusPass.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 6 a 12 caracteres</li>
+                <li className={statusPass.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
+                <li className={statusPass.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
                 <li className={statusPass.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
                 <li className={statusPass.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
+                <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
               </ul>
             </div>
 
-            {/* Data de Nascimento e CPF */}
+            {/* Data Nascimento e CPF */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
@@ -329,32 +420,39 @@ export default function Auth({ onLoginSucesso }) {
               </div>
             </div>
 
-            {/* Endereço Simplificado */}
+            {/* Endereço Reestruturado */}
             <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Endereço</span>
-              <div className="grid grid-cols-3 gap-2">
+              
+              {/* Linha 1: CEP e Rua (mesmo tamanho) */}
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
-                  placeholder="CEP"
+                  placeholder="CEP (ex: 79400-000)"
                   value={endereco.cep}
-                  onChange={(e) => setEndereco({ ...endereco, cep: e.target.value })}
+                  onChange={handleCepChange}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  required
                 />
                 <input
                   type="text"
                   placeholder="Rua"
                   value={endereco.rua}
                   onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
-                  className="col-span-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  required
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+
+              {/* Linha 2: Número e Bairro */}
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
                   placeholder="Número"
+                  disabled={endereco.semNumero}
                   value={endereco.numero}
                   onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })}
-                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs disabled:opacity-50"
                 />
                 <input
                   type="text"
@@ -362,18 +460,64 @@ export default function Auth({ onLoginSucesso }) {
                   value={endereco.bairro}
                   onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  required
+                />
+              </div>
+
+              {/* Checkbox Sem Número */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="semNumero"
+                  checked={endereco.semNumero}
+                  onChange={(e) => setEndereco({ ...endereco, semNumero: e.target.checked, numero: e.target.checked ? '' : endereco.numero })}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                />
+                <label htmlFor="semNumero" className="text-xs text-gray-500 dark:text-gray-400">
+                  Não possui número
+                </label>
+              </div>
+
+              {/* Linha 3: Complemento e Descrição */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <input
+                  type="text"
+                  placeholder="Complemento (ex: Apto 101)"
+                  value={endereco.complemento}
+                  onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
                 />
                 <input
                   type="text"
-                  placeholder="Cidade/UF"
+                  placeholder={endereco.semNumero ? "Descrição (Obrigatória p/ identificação)" : "Descrição (opcional)"}
+                  value={endereco.descricao}
+                  onChange={(e) => setEndereco({ ...endereco, descricao: e.target.value })}
+                  className={`px-3 py-2 rounded-lg border bg-gray-50 dark:bg-gray-800 text-xs ${endereco.semNumero && !endereco.descricao ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'}`}
+                />
+              </div>
+
+              {/* Linha 4: Cidade e Estado separados */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <input
+                  type="text"
+                  placeholder="Cidade"
                   value={endereco.cidade}
                   onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Estado (UF)"
+                  value={endereco.estado}
+                  onChange={(e) => setEndereco({ ...endereco, estado: e.target.value })}
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  required
                 />
               </div>
             </div>
 
-            {/* Termos de Uso */}
+            {/* Termos de Uso Linkado com Modal */}
             <div className="flex items-center gap-2 pt-2">
               <input
                 type="checkbox"
@@ -384,7 +528,14 @@ export default function Auth({ onLoginSucesso }) {
                 required
               />
               <label htmlFor="termos" className="text-xs text-gray-500 dark:text-gray-400">
-                Eu li e concordo com os termos de uso, política de privacidade, etc.
+                Eu li e concordo com os{' '}
+                <button
+                  type="button"
+                  onClick={() => setModalTermosAberto(true)}
+                  className="text-indigo-600 dark:text-indigo-400 underline font-medium hover:text-indigo-500"
+                >
+                  termos de uso e política de privacidade
+                </button>
               </label>
             </div>
 
@@ -398,7 +549,7 @@ export default function Auth({ onLoginSucesso }) {
           </form>
         )}
 
-        {/* FLUXO DE ESQUECI A SENHA */}
+        {/* FLUXO ESQUECI SENHA */}
         {modo === 'esqueci-senha' && (
           <form onSubmit={handleEsqueciSenha} className="space-y-4">
             <div className="space-y-1">
@@ -429,7 +580,7 @@ export default function Auth({ onLoginSucesso }) {
           </form>
         )}
 
-        {/* TELA DE VERIFICAÇÃO DE CÓDIGO (6 DÍGITOS) */}
+        {/* VERIFICAÇÃO OTP 6 DÍGITOS */}
         {modo === 'verificar-codigo' && (
           <div className="space-y-4 text-center">
             <p className="text-xs text-gray-500">Enviamos um código de 6 dígitos para o e-mail: <span className="font-semibold">{email}</span></p>
@@ -473,20 +624,31 @@ export default function Auth({ onLoginSucesso }) {
           </div>
         )}
 
-        {/* TELA DE NOVA SENHA */}
+        {/* NOVA SENHA */}
         {modo === 'nova-senha' && (
           <div className="space-y-4">
             <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Criar nova senha</label>
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                placeholder="senha"
-              />
+              <div className="relative">
+                <input
+                  type={mostrarSenhaNova ? "text" : "password"}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                  placeholder="senha"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenhaNova(!mostrarSenhaNova)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  {mostrarSenhaNova ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
               <ul className="text-[11px] space-y-0.5 pt-1">
                 <li className={statusPass.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 6 a 12 caracteres</li>
+                <li className={statusPass.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
+                <li className={statusPass.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
                 <li className={statusPass.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
                 <li className={statusPass.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
               </ul>
@@ -517,7 +679,39 @@ export default function Auth({ onLoginSucesso }) {
           </div>
         )}
 
-        {/* Alternador de Modo (Login / Cadastro) */}
+        {/* MODAL DOS TERMOS DE USO E POLÍTICA DE PRIVACIDADE */}
+        {modalTermosAberto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 space-y-4">
+              <div className="flex justify-between items-center border-b pb-3 dark:border-gray-800">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Termos de Uso e Política de Privacidade</h3>
+                <button 
+                  onClick={() => setModalTermosAberto(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-bold text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 space-y-3 leading-relaxed">
+                <p><strong>1. Aceitação dos Termos:</strong> Ao criar uma conta no <strong>GestãoFácil</strong>, você concorda com estes termos de uso e com nossa política de privacidade. O sistema é fornecido gratuitamente para fins de controle de estoque residencial e despensa doméstica.</p>
+                <p><strong>2. Privacidade e Dados:</strong> Seus dados pessoais (como nome de usuário, e-mail, CPF e endereço) são armazenados de forma segura utilizando criptografia e isolamento por Row Level Security (RLS) no Supabase. Não compartilhamos suas informações com terceiros.</p>
+                <p><strong>3. Responsabilidade da Conta:</strong> O usuário é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta.</p>
+                <p><strong>4. Uso Adequado:</strong> O GestãoFácil destina-se exclusivamente ao gerenciamento doméstico de suprimentos. É proibido o uso da plataforma para fins ilícitos.</p>
+                <p><strong>5. Atualizações:</strong> Estes termos podem ser atualizados periodicamente para refletir melhorias no sistema.</p>
+              </div>
+              <div className="pt-4 border-t dark:border-gray-800 text-right">
+                <button
+                  onClick={() => { setTermosAceitos(true); setModalTermosAberto(false); }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-medium transition"
+                >
+                  Li e Concordo
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Alternador de Modo */}
         {(modo === 'login' || modo === 'cadastro') && (
           <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
             {modo === 'login' ? 'Ainda não tem uma conta?' : 'Já possui uma conta?'}{' '}
