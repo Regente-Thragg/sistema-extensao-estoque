@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração do Supabase Auth (utilizando variáveis de ambiente do Vite ou fallback)
+// Configuração do Supabase Auth
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'SUA_SUPABASE_URL';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'SUA_SUPABASE_ANON_KEY';
 
@@ -105,7 +105,7 @@ export async function buscarCategorias() {
   }
 }
 
-export async function criarategoria(nome) {
+export async function criarCategoria(nome) {
   try {
     const resposta = await fetch(`${API_URL}/categorias`, {
       method: 'POST',
