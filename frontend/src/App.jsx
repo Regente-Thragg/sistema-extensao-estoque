@@ -4,9 +4,10 @@ import Produtos from './pages/Produtos';
 import Relatorios from './pages/Relatorios';
 import HistoricoGeral from './pages/HistoricoGeral';
 import Ajuda from './pages/Ajuda';
-import AssistenteIA from './components/AssistenteIA'; // <--- Importação do Assistente Inteligente
 import Configuracoes from './pages/Configuracoes';
-import { buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
+import AssistenteIA from './components/AssistenteIA';
+import Auth from './components/Auth';
+import { supabase, buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
 
 // Lê a preferência salva; se não houver, usa a preferência do sistema operacional
 function temaInicialEscuro() {
@@ -21,9 +22,11 @@ function temaInicialEscuro() {
 
 export default function App() {
   const [telaAtiva, setTelaAtiva] = useState('dashboard');
-
-  // Estado para controlar se a barra lateral está aberta ou fechada em celulares/telas menores
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  
+  // Estados de Sessão / Autenticação Supabase
+  const [sessao, setSessao] = useState(null);
+  const [verificandoSessao, setVerificandoSessao] = useState(true);
 
   // Modo escuro
   const [darkMode, setDarkMode] = useState(temaInicialEscuro);
@@ -49,16 +52,35 @@ export default function App() {
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  // Carrega os dados do servidor APENAS UMA VEZ quando a aplicação inicia
+  // Gerenciamento de Sessão via Supabase Auth
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessao(session);
+      setVerificandoSessao(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Carrega os dados do servidor APENAS QUANDO HOUVER SESSÃO ATIVA
   useEffect(() => {
     async function carregarDadosGlobais() {
+      if (!sessao) {
+        setCarregando(false);
+        return;
+      }
       try {
+        setCarregando(true);
         const [dadosProdutos, dadosHistorico] = await Promise.all([
           buscarProdutos(),
           buscarHistorico()
         ]);
-        setProdutos(dadosProdutos);
-        setHistorico(dadosHistorico);
+        setProdutos(dadosProdutos || []);
+        setHistorico(dadosHistorico || []);
       } catch (erro) {
         console.error('Erro ao carregar dados globais:', erro);
       } finally {
@@ -66,7 +88,7 @@ export default function App() {
       }
     }
     carregarDadosGlobais();
-  }, []);
+  }, [sessao]);
 
   // Funções de ação que atualizam o banco e sincronizam o estado global instantaneamente
   const handleCriarProduto = async (novoProduto) => {
@@ -74,7 +96,7 @@ export default function App() {
     if (resultado && !resultado.erro) {
       setProdutos([...produtos, resultado]);
       const novoHistorico = await buscarHistorico();
-      setHistorico(novoHistorico);
+      setHistorico(novoHistorico || []);
     }
     return resultado;
   };
@@ -84,7 +106,7 @@ export default function App() {
     if (atualizado && !atualizado.erro) {
       setProdutos(produtos.map(p => p.id === id ? atualizado : p));
       const novoHistorico = await buscarHistorico();
-      setHistorico(novoHistorico);
+      setHistorico(novoHistorico || []);
     }
     return atualizado;
   };
@@ -94,7 +116,7 @@ export default function App() {
     if (atualizado && !atualizado.erro) {
       setProdutos(produtos.map(p => p.id === id ? atualizado : p));
       const novoHistorico = await buscarHistorico();
-      setHistorico(novoHistorico);
+      setHistorico(novoHistorico || []);
     }
     return atualizado;
   };
@@ -107,10 +129,28 @@ export default function App() {
     return resposta;
   };
 
+  // Enquanto valida a sessão inicial
+  if (verificandoSessao) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 font-medium">
+        Verificando acesso ao GestãoFácil...
+      </div>
+    );
+  }
+
+  // Se o usuário não estiver autenticado, exibe a tela de login translúcida por cima
+  if (!sessao) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-900">
+        <Auth onLoginSucesso={(user) => setSessao({ user })} />
+      </div>
+    );
+  }
+
   if (carregando) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 font-medium">
-        Carregando sistema GestãoFácil...
+        Carregando dados do usuário...
       </div>
     );
   }
@@ -216,6 +256,14 @@ export default function App() {
             {darkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
           </button>
 
+          {/* Botão de Logout / Sair da Conta */}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition"
+          >
+            🚪 Sair da Conta
+          </button>
+
           <div className="text-xs text-slate-500 text-center border-t border-slate-800 pt-4">
             Projeto Extensão - TSI
           </div>
@@ -233,7 +281,7 @@ export default function App() {
       {/* Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
         {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} />}
-        {telaAtiva === 'produtos' && ( // Nota: mantido telaAtiva === 'produtos'
+        {telaAtiva === 'produtos' && (
           <Produtos
             produtos={produtos}
             onCriar={handleCriarProduto}
