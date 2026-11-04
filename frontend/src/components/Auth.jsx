@@ -49,7 +49,27 @@ export default function Auth({ onLoginSucesso }) {
     return () => clearInterval(timer);
   }, [tempoReenvio]);
 
-  // Validações em tempo real atualizadas
+  // Função para calcular a idade a partir do formato DD/MM/YYYY
+  const calcularIdade = (dataStr) => {
+    if (dataStr.length !== 10) return null;
+    const [dia, mes, ano] = dataStr.split('/').map(Number);
+    if (!dia || !mes || !ano) return null;
+    
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - ano;
+    const mesAtual = hoje.getMonth() + 1;
+    const diaAtual = hoje.getDate();
+
+    if (mesAtual < mes || (mesAtual === mes && diaAtual < dia)) {
+      idade--;
+    }
+    return idade;
+  };
+
+  const idadeCalculada = calcularIdade(dataNascimento);
+  const eMenorDe14 = idadeCalculada !== null && idadeCalculada < 14;
+
+  // Validações em tempo real de Usuário e Senha
   const validarUsername = (user) => {
     const tamanho = user.length >= 8 && user.length <= 16;
     const temMaiuscula = /[A-Z]/.test(user);
@@ -89,7 +109,7 @@ export default function Auth({ onLoginSucesso }) {
   const statusUser = validarUsername(nomeUsuario);
   const statusPass = validarSenha(senha);
 
-  // Máscaras
+  // Máscaras de Formatação
   const formatarCpf = (valor) => {
     return valor
       .replace(/\D/g, '')
@@ -114,7 +134,7 @@ export default function Auth({ onLoginSucesso }) {
       .substring(0, 9);
   };
 
-  // Buscar CEP via API pública ViaCEP
+  // Buscar CEP via ViaCEP
   const handleCepChange = async (e) => {
     const cepFormatado = formatarCep(e.target.value);
     setEndereco((prev) => ({ ...prev, cep: cepFormatado }));
@@ -139,7 +159,7 @@ export default function Auth({ onLoginSucesso }) {
     }
   };
 
-  // Login Google
+  // Login com Google
   const handleLoginGoogle = async () => {
     setErro('');
     setCarregando(true);
@@ -155,13 +175,14 @@ export default function Auth({ onLoginSucesso }) {
     }
   };
 
-  // Submeter formulários
+  // Submit dos formulários
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
     setSucesso('');
 
     if (modo === 'cadastro') {
+      if (eMenorDe14) return setErro('Você deve ter 14 anos ou mais para se cadastrar.');
       if (!statusUser.valido) return setErro('O nome de usuário não atende aos requisitos mínimos.');
       if (!statusPass.valido) return setErro('A senha não atende aos requisitos mínimos.');
       if (!termosAceitos) return setErro('Você deve aceitar os termos de uso e política de privacidade.');
@@ -220,13 +241,22 @@ export default function Auth({ onLoginSucesso }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-xl p-8 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 space-y-6 my-8">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-md p-6 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 space-y-5 my-auto max-h-[90vh] flex flex-col justify-between">
         
         {/* Cabeçalho */}
-        <div className="text-center space-y-2">
-          <span className="text-4xl">📦</span>
+        <div className="text-center space-y-2 relative pt-1">
+          {modo === 'cadastro' && (
+            <button
+              type="button"
+              onClick={() => { setModo('login'); setErro(''); setSucesso(''); }}
+              className="absolute left-0 top-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            >
+              ‹ Voltar
+            </button>
+          )}
+          <span className="text-4xl block">📦</span>
           <h2 className="text-2xl font-bold tracking-wide text-gray-900 dark:text-white">GestãoFácil</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {modo === 'login' && 'Entre na sua conta para gerenciar seu estoque'}
             {modo === 'cadastro' && 'Crie sua conta privada e segura'}
             {modo === 'esqueci-senha' && 'Recuperação de Acesso'}
@@ -238,7 +268,7 @@ export default function Auth({ onLoginSucesso }) {
         {erro && <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-600 rounded-xl text-xs font-medium">{erro}</div>}
         {sucesso && <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-medium">{sucesso}</div>}
 
-        {/* GOOGLE BUTTON */}
+        {/* BOTAO GOOGLE */}
         {(modo === 'login' || modo === 'cadastro') && (
           <div className="space-y-3">
             <button
@@ -325,109 +355,129 @@ export default function Auth({ onLoginSucesso }) {
 
         {/* CADASTRO FORM */}
         {modo === 'cadastro' && (
-          <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto px-1" autoComplete="off">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">E-mail</label>
-              <input
-                type="email"
-                autoComplete="off"
-                data-lpignore="true"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto max-h-[55vh] pr-1" autoComplete="off">
+            
+            {/* SEÇÃO 1: DADOS PESSOAIS */}
+            <div className="space-y-3">
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 block border-b pb-1 dark:border-gray-800">
+                Dados Pessoais
+              </span>
 
-            {/* Nome de Usuário */}
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome de Usuário</label>
-              <input
-                type="text"
-                autoComplete="off"
-                data-lpignore="true"
-                value={nomeUsuario}
-                onChange={(e) => setNomeUsuario(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                placeholder="Ex: JoaoSilva123"
-                required
-              />
-              <ul className="text-[11px] space-y-0.5 pt-1">
-                <li className={statusUser.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 8 a 16 caracteres</li>
-                <li className={statusUser.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
-                <li className={statusUser.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
-                <li className={statusUser.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
-                <li className={statusUser.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
-                <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
-              </ul>
-            </div>
-
-            {/* Senha */}
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Senha</label>
-              <div className="relative">
+              {/* E-mail */}
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">E-mail</label>
                 <input
-                  type={mostrarSenhaCadastro ? "text" : "password"}
-                  id="new-password"
-                  name="new-password"
-                  autoComplete="new-password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                  placeholder="senha"
+                  type="email"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                  placeholder="seu@email.com"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setMostrarSenhaCadastro(!mostrarSenhaCadastro)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm"
-                >
-                  {mostrarSenhaCadastro ? '👁️' : '👁️‍🗨️'}
-                </button>
               </div>
-              <ul className="text-[11px] space-y-0.5 pt-1">
-                <li className={statusPass.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 6 a 12 caracteres</li>
-                <li className={statusPass.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
-                <li className={statusPass.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
-                <li className={statusPass.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
-                <li className={statusPass.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
-                <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
-              </ul>
-            </div>
 
-            {/* Data Nascimento e CPF */}
-            <div className="grid grid-cols-2 gap-3">
+              {/* Nome de Usuário */}
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome de Usuário</label>
                 <input
                   type="text"
                   autoComplete="off"
                   data-lpignore="true"
-                  value={dataNascimento}
-                  onChange={(e) => setDataNascimento(formatarData(e.target.value))}
+                  value={nomeUsuario}
+                  onChange={(e) => setNomeUsuario(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                  placeholder="DD/MM/YYYY"
+                  placeholder="Ex: JoaoSilva123"
                   required
                 />
+                <ul className="text-[11px] space-y-0.5 pt-1">
+                  <li className={statusUser.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 8 a 16 caracteres</li>
+                  <li className={statusUser.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
+                  <li className={statusUser.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
+                  <li className={statusUser.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
+                  <li className={statusUser.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
+                  <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
+                </ul>
               </div>
+
+              {/* Senha */}
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">CPF</label>
-                <input
-                  type="text"
-                  autoComplete="off"
-                  data-lpignore="true"
-                  value={cpf}
-                  onChange={(e) => setCpf(formatarCpf(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                  placeholder="000.000.000-00"
-                  required
-                />
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Senha</label>
+                <div className="relative">
+                  <input
+                    type={mostrarSenhaCadastro ? "text" : "password"}
+                    id="new-password"
+                    name="new-password"
+                    autoComplete="new-password"
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                    placeholder="senha"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenhaCadastro(!mostrarSenhaCadastro)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm"
+                  >
+                    {mostrarSenhaCadastro ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
+                <ul className="text-[11px] space-y-0.5 pt-1">
+                  <li className={statusPass.tamanho ? 'text-emerald-600' : 'text-red-500'}>• 6 a 12 caracteres</li>
+                  <li className={statusPass.temMaiuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra maiúscula</li>
+                  <li className={statusPass.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
+                  <li className={statusPass.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
+                  <li className={statusPass.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
+                  <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
+                </ul>
               </div>
+
+              {/* Data Nascimento e CPF (com validação visual de idade) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    value={dataNascimento}
+                    onChange={(e) => setDataNascimento(formatarData(e.target.value))}
+                    className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-sm ${
+                      eMenorDe14 ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                    placeholder="DD/MM/YYYY"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">CPF</label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    value={cpf}
+                    onChange={(e) => setCpf(formatarCpf(e.target.value))}
+                    className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-sm ${
+                      eMenorDe14 ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-700'
+                    }`}
+                    placeholder="000.000.000-00"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* AVISO EM VERMELHO DE IDADE MÍNIMA */}
+              {eMenorDe14 && (
+                <p className="text-xs text-red-500 font-semibold text-center pt-1">
+                  ⚠️ Você deve ter 14 anos ou mais para continuar.
+                </p>
+              )}
             </div>
 
-            {/* Endereço Reestruturado (Sem autofill do navegador) */}
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800" autoComplete="off">
+            {/* SEÇÃO 2: ENDEREÇO (Desabilitada se menor que 14 anos) */}
+            <div className={`space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800 ${eMenorDe14 ? 'opacity-40 pointer-events-none' : ''}`}>
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Endereço</span>
               
               {/* Linha 1: CEP e Rua */}
@@ -437,6 +487,7 @@ export default function Auth({ onLoginSucesso }) {
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="CEP"
+                  disabled={eMenorDe14}
                   value={endereco.cep}
                   onChange={handleCepChange}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
@@ -447,6 +498,7 @@ export default function Auth({ onLoginSucesso }) {
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="Rua"
+                  disabled={eMenorDe14}
                   value={endereco.rua}
                   onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
@@ -461,16 +513,18 @@ export default function Auth({ onLoginSucesso }) {
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="Número"
-                  disabled={endereco.semNumero}
+                  disabled={eMenorDe14 || endereco.semNumero}
                   value={endereco.numero}
                   onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs disabled:opacity-50"
+                  required={!endereco.semNumero}
                 />
                 <input
                   type="text"
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="Bairro"
+                  disabled={eMenorDe14}
                   value={endereco.bairro}
                   onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
@@ -483,6 +537,7 @@ export default function Auth({ onLoginSucesso }) {
                 <input
                   type="checkbox"
                   id="semNumero"
+                  disabled={eMenorDe14}
                   checked={endereco.semNumero}
                   onChange={(e) => setEndereco({ ...endereco, semNumero: e.target.checked, numero: e.target.checked ? '' : endereco.numero })}
                   className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
@@ -499,28 +554,35 @@ export default function Auth({ onLoginSucesso }) {
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="Complemento (ex: Apto 101)"
+                  disabled={eMenorDe14}
                   value={endereco.complemento}
                   onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
+                  required
                 />
                 <input
                   type="text"
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder={endereco.semNumero ? "Descrição (Obrigatória p/ identificação)" : "Descrição (opcional)"}
+                  disabled={eMenorDe14}
                   value={endereco.descricao}
                   onChange={(e) => setEndereco({ ...endereco, descricao: e.target.value })}
-                  className={`px-3 py-2 rounded-lg border bg-gray-50 dark:bg-gray-800 text-xs ${endereco.semNumero && !endereco.descricao ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'}`}
+                  className={`px-3 py-2 rounded-lg border bg-gray-50 dark:bg-gray-800 text-xs ${
+                    endereco.semNumero && !endereco.descricao ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                  required={endereco.semNumero}
                 />
               </div>
 
-              {/* Linha 4: Cidade e Estado separados */}
+              {/* Linha 4: Cidade e Estado */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <input
                   type="text"
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="Cidade"
+                  disabled={eMenorDe14}
                   value={endereco.cidade}
                   onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
@@ -531,6 +593,7 @@ export default function Auth({ onLoginSucesso }) {
                   autoComplete="off"
                   data-lpignore="true"
                   placeholder="Estado (UF)"
+                  disabled={eMenorDe14}
                   value={endereco.estado}
                   onChange={(e) => setEndereco({ ...endereco, estado: e.target.value })}
                   className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs"
@@ -539,11 +602,12 @@ export default function Auth({ onLoginSucesso }) {
               </div>
             </div>
 
-            {/* Termos de Uso Linkado com Modal */}
-            <div className="flex items-center gap-2 pt-2">
+            {/* Termos de Uso */}
+            <div className={`flex items-center gap-2 pt-2 ${eMenorDe14 ? 'opacity-40 pointer-events-none' : ''}`}>
               <input
                 type="checkbox"
                 id="termos"
+                disabled={eMenorDe14}
                 checked={termosAceitos}
                 onChange={(e) => setTermosAceitos(e.target.checked)}
                 className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
@@ -563,7 +627,7 @@ export default function Auth({ onLoginSucesso }) {
 
             <button
               type="submit"
-              disabled={carregando || !statusUser.valido || !statusPass.valido || !termosAceitos}
+              disabled={carregando || !statusUser.valido || !statusPass.valido || !termosAceitos || eMenorDe14}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl text-sm shadow-sm transition disabled:opacity-50"
             >
               {carregando ? 'Cadastrando...' : 'Cadastrar Conta'}
@@ -716,10 +780,11 @@ export default function Auth({ onLoginSucesso }) {
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-300 space-y-3 leading-relaxed">
                 <p><strong>1. Aceitação dos Termos:</strong> Ao criar uma conta no <strong>GestãoFácil</strong>, você concorda com estes termos de uso e com nossa política de privacidade. O sistema é fornecido gratuitamente para fins de controle de estoque residencial e despensa doméstica.</p>
-                <p><strong>2. Privacidade e Dados:</strong> Seus dados pessoais (como nome de usuário, e-mail, CPF e endereço) são armazenados de forma segura utilizando criptografia e isolamento por Row Level Security (RLS) no Supabase. Não compartilhamos suas informações com terceiros.</p>
-                <p><strong>3. Responsabilidade da Conta:</strong> O usuário é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta.</p>
-                <p><strong>4. Uso Adequado:</strong> O GestãoFácil destina-se exclusivamente ao gerenciamento doméstico de suprimentos. É proibido o uso da plataforma para fins ilícitos.</p>
-                <p><strong>5. Atualizações:</strong> Estes termos podem ser atualizados periodicamente para refletir melhorias no sistema.</p>
+                <p><strong>2. Restrição de Idade (Mínimo 14 Anos):</strong> O uso da plataforma é restrito a indivíduos com idade igual ou superior a 14 anos. O cadastro de menores de 14 anos é estritamente proibido e resultará no bloqueio automático da criação da conta.</p>
+                <p><strong>3. Privacidade e Dados:</strong> Seus dados pessoais (como nome de usuário, e-mail, CPF e endereço) são armazenados de forma segura utilizando criptografia e isolamento por Row Level Security (RLS) no Supabase. Não compartilhamos suas informações com terceiros.</p>
+                <p><strong>4. Responsabilidade da Conta:</strong> O usuário é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta.</p>
+                <p><strong>5. Uso Adequado:</strong> O GestãoFácil destina-se exclusivamente ao gerenciamento doméstico de suprimentos. É proibido o uso da plataforma para fins ilícitos.</p>
+                <p><strong>6. Atualizações:</strong> Estes termos podem ser atualizados periodicamente para refletir melhorias no sistema e adequações regulatórias.</p>
               </div>
               <div className="pt-4 border-t dark:border-gray-800 text-right">
                 <button
