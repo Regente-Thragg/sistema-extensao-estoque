@@ -94,6 +94,7 @@ export default function Auth({ onLoginSucesso }) {
     const temMinuscula = /[a-z]/.test(pass);
     const temNumero = /\d/.test(pass);
     const temEspecial = /[@#%&*-_+.]/.test(pass);
+    const semEspacos = !/\s/.test(pass); // Não permite espaços
     const caracteresValidos = /^[a-zA-Z0-9@#%&*-_+.]+$/.test(pass);
     return {
       tamanho,
@@ -101,8 +102,9 @@ export default function Auth({ onLoginSucesso }) {
       temMinuscula,
       temNumero,
       temEspecial,
+      semEspacos,
       caracteresValidos,
-      valido: tamanho && temMaiuscula && temMinuscula && temNumero && temEspecial && caracteresValidos
+      valido: tamanho && temMaiuscula && temMinuscula && temNumero && temEspecial && semEspacos && caracteresValidos
     };
   };
 
@@ -390,6 +392,7 @@ export default function Auth({ onLoginSucesso }) {
                   <li className={statusPass.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
                   <li className={statusPass.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
                   <li className={statusPass.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
+                  <li className={statusPass.semEspacos ? 'text-emerald-600' : 'text-red-500'}>• Sem espaços em branco</li>
                   <li className="text-gray-400 italic">(Caracteres permitidos: @#%&*-+_.)</li>
                 </ul>
               </div>
@@ -697,6 +700,7 @@ export default function Auth({ onLoginSucesso }) {
                 <li className={statusPass.temMinuscula ? 'text-emerald-600' : 'text-red-500'}>• Ao menos uma letra minúscula</li>
                 <li className={statusPass.temNumero ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um número</li>
                 <li className={statusPass.temEspecial ? 'text-emerald-600' : 'text-red-500'}>• Ao menos um caractere especial</li>
+                <li className={statusPass.semEspacos ? 'text-emerald-600' : 'text-red-500'}>• Sem espaços em branco</li>
               </ul>
             </div>
 
@@ -759,15 +763,15 @@ export default function Auth({ onLoginSucesso }) {
         )}
 
         {/* Alternador de Modo */}
-        {(modo === 'login' || modo === 'cadastro') && (
+        {modo === 'login' && (
           <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
-            {modo === 'login' ? 'Ainda não tem uma conta?' : 'Já possui uma conta?'}{' '}
+            Ainda não tem uma conta?{' '}
             <button
               type="button"
-              onClick={() => { setModo(modo === 'login' ? 'cadastro' : 'login'); setErro(''); setSucesso(''); }}
+              onClick={() => { setModo('cadastro'); setErro(''); setSucesso(''); }}
               className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline ml-1"
             >
-              {modo === 'login' ? 'Cadastre-se' : 'Fazer Login'}
+              Cadastre-se
             </button>
           </div>
         )}
