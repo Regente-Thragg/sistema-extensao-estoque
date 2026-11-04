@@ -325,12 +325,13 @@ export default function Auth({ onLoginSucesso }) {
 
         {/* CADASTRO FORM */}
         {modo === 'cadastro' && (
-          <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto px-1" autoComplete="on">
+          <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto px-1" autoComplete="off">
             <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">E-mail</label>
               <input
                 type="email"
-                autoComplete="email"
+                autoComplete="off"
+                data-lpignore="true"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
@@ -344,7 +345,8 @@ export default function Auth({ onLoginSucesso }) {
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome de Usuário</label>
               <input
                 type="text"
-                autoComplete="username"
+                autoComplete="off"
+                data-lpignore="true"
                 value={nomeUsuario}
                 onChange={(e) => setNomeUsuario(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
@@ -400,6 +402,8 @@ export default function Auth({ onLoginSucesso }) {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={dataNascimento}
                   onChange={(e) => setDataNascimento(formatarData(e.target.value))}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
@@ -411,6 +415,8 @@ export default function Auth({ onLoginSucesso }) {
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">CPF</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   value={cpf}
                   onChange={(e) => setCpf(formatarCpf(e.target.value))}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
@@ -420,14 +426,16 @@ export default function Auth({ onLoginSucesso }) {
               </div>
             </div>
 
-            {/* Endereço Reestruturado */}
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            {/* Endereço Reestruturado (Sem autofill do navegador) */}
+            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800" autoComplete="off">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Endereço</span>
               
-              {/* Linha 1: CEP e Rua (mesmo tamanho) */}
+              {/* Linha 1: CEP e Rua */}
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="CEP (ex: 79400-000)"
                   value={endereco.cep}
                   onChange={handleCepChange}
@@ -436,6 +444,8 @@ export default function Auth({ onLoginSucesso }) {
                 />
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="Rua"
                   value={endereco.rua}
                   onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })}
@@ -448,6 +458,8 @@ export default function Auth({ onLoginSucesso }) {
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="Número"
                   disabled={endereco.semNumero}
                   value={endereco.numero}
@@ -456,6 +468,8 @@ export default function Auth({ onLoginSucesso }) {
                 />
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="Bairro"
                   value={endereco.bairro}
                   onChange={(e) => setEndereco({ ...endereco, bairro: e.target.value })}
@@ -482,6 +496,8 @@ export default function Auth({ onLoginSucesso }) {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="Complemento (ex: Apto 101)"
                   value={endereco.complemento}
                   onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })}
@@ -489,6 +505,8 @@ export default function Auth({ onLoginSucesso }) {
                 />
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder={endereco.semNumero ? "Descrição (Obrigatória p/ identificação)" : "Descrição (opcional)"}
                   value={endereco.descricao}
                   onChange={(e) => setEndereco({ ...endereco, descricao: e.target.value })}
@@ -500,6 +518,8 @@ export default function Auth({ onLoginSucesso }) {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="Cidade"
                   value={endereco.cidade}
                   onChange={(e) => setEndereco({ ...endereco, cidade: e.target.value })}
@@ -508,6 +528,8 @@ export default function Auth({ onLoginSucesso }) {
                 />
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
                   placeholder="Estado (UF)"
                   value={endereco.estado}
                   onChange={(e) => setEndereco({ ...endereco, estado: e.target.value })}
