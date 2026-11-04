@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração do Supabase Auth
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'SUA_SUPABASE_URL';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'SUA_SUPABASE_ANON_KEY';
+// Configuração do Supabase Auth com fallbacks seguros para evitar erros de URL
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://baukinwjwktzcsmpvcka.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dm9fZ0459USH7rGlDzGE1w_8-apyI2l';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
