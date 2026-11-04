@@ -1,3 +1,12 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Configuração do Supabase Auth (utilizando variáveis de ambiente do Vite ou fallback)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'SUA_SUPABASE_URL';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'SUA_SUPABASE_ANON_KEY';
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// URL do Backend na nuvem (Render)
 const API_URL = 'https://sistema-extensao-estoque.onrender.com/api';
 
 export async function buscarProdutos() {
@@ -96,7 +105,7 @@ export async function buscarCategorias() {
   }
 }
 
-export async function criarCategoria(nome) {
+export async function criarategoria(nome) {
   try {
     const resposta = await fetch(`${API_URL}/categorias`, {
       method: 'POST',
