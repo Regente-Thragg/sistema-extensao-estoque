@@ -23,7 +23,7 @@ export default function Ajuda() {
         </svg>
       ),
       cor: 'bg-pink-50 text-pink-600 border-pink-100 hover:bg-pink-100 dark:bg-pink-950/40 dark:border-pink-900 dark:text-pink-400',
-      link: 'https://www.instagram.com/gamma_jack_2005?vrfl=MWdvb2VoaHAyOWwxOA==',
+      link: 'https://www.instagram.com/victor.hugo.git?cplk=MWdvb2VoaHAyOWwxOA==',
       botaoTexto: 'Seguir no Instagram'
     },
     {
