@@ -47,7 +47,7 @@ export default function Ajuda() {
         </svg>
       ),
       cor: 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-900 dark:text-indigo-400',
-      link: 'https://mail.google.com/mail/?view=cm&fs=1&to=shikigamispm@gmail.com&su=Suporte%20-%20GestãoFácil',
+      link: 'https://mail.google.com/mail/?view=cm&fs=1&to=support.easymanagement@gmail.com&su=Suporte%20-%20GestãoFácil',
       botaoTexto: 'Enviar E-mail'
     }
   ];
