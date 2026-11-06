@@ -3,7 +3,7 @@ import { buscarProdutos, buscarHistorico } from '../services/api';
 import { exportarParaCSV } from '../utils/exportCSV';
 import { exportarParaPDF } from '../utils/exportPDF';
 
-export default function Relatorios({ produtos: produtosProp }) {
+export default function Relatorios({ produtos: produtosProp, limiteEstoqueBaixo = 3 }) {
   const [produtos, setProdutos] = useState(produtosProp || []);
   const [historico, setHistorico] = useState([]);
 
@@ -25,7 +25,9 @@ export default function Relatorios({ produtos: produtosProp }) {
   const totalItens = produtos.length;
   const quantidadeTotalEstoque = produtos.reduce((acc, p) => acc + Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)), 0);
   const valorTotalEstoque = produtos.reduce((acc, p) => acc + (Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)) * Number(p.preco || 0)), 0);
-  const produtosEstoqueBaixo = produtos.filter(p => Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)) <= 3);
+  
+  // Utiliza o limite recebido da residência dinamicamente
+  const produtosEstoqueBaixo = produtos.filter(p => Number(p.quantidade !== undefined ? p.quantidade : (p.qtd || 0)) <= Number(limiteEstoqueBaixo));
 
   // Agrupamento para o gráfico de consumo/distribuição por categoria
   const categoriasMap = {};
@@ -130,9 +132,9 @@ export default function Relatorios({ produtos: produtosProp }) {
         </div>
       </div>
 
-      {/* Alertas de Estoque Baixo */}
+      {/* Alertas de Estoque Baixo com limite dinâmico */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 space-y-4">
-        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">⚠️ Alerta de Estoque Baixo (≤ 3 unidades)</h3>
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">⚠️ Alerta de Estoque Baixo (≤ {limiteEstoqueBaixo} unidades)</h3>
         {produtosEstoqueBaixo.length === 0 ? (
           <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Parabéns! Nenhum produto com estoque crítico no momento.</p>
         ) : (

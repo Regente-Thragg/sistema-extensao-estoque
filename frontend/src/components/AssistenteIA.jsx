@@ -18,9 +18,6 @@ function EstrelasIA() {
           70%      { transform: scale(0.8) rotate(90deg); opacity: 0.7; }
         }
         .gf-estrela-ia { animation: gf-estrela-ia 2s ease-in-out infinite; transform-origin: center; }
-        @media (prefers-reduced-motion: reduce) {
-          .gf-estrela-ia { animation: none; opacity: 1; }
-        }
       `}</style>
       {estrelas.map((e, i) => (
         <svg

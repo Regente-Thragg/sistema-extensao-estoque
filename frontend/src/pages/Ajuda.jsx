@@ -35,7 +35,7 @@ export default function Ajuda() {
         </svg>
       ),
       cor: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-400',
-      link: 'https://www.facebook.com/share/1A7v7vHeKm/',
+      link: 'https://www.facebook.com/share/1E7nNCwg4S/',
       botaoTexto: 'Acessar Facebook'
     },
     {

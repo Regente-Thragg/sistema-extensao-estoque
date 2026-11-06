@@ -26,7 +26,6 @@ export default function App() {
 
   const [darkMode, setDarkMode] = useState(temaInicialEscuro);
 
-  // Estado global para os toggles de recursos nativos (inicializa padrão ativado ou do localStorage)
   const [recursosAtivos, setRecursosAtivos] = useState(() => {
     try {
       const salvo = localStorage.getItem('recursosAtivos');
@@ -36,11 +35,44 @@ export default function App() {
     }
   });
 
+  const [limiteEstoqueBaixo, setLimiteEstoqueBaixo] = useState(() => {
+    try {
+      const salvo = localStorage.getItem('limiteEstoqueBaixo');
+      return salvo ? Number(salvo) : 3;
+    } catch {
+      return 3;
+    }
+  });
+
   const handleAtualizarRecursos = (novosRecursos) => {
     setRecursosAtivos(novosRecursos);
     try {
       localStorage.setItem('recursosAtivos', JSON.stringify(novosRecursos));
     } catch {}
+  };
+
+  const handleAtualizarResidencia = (novaResidencia) => {
+    if (novaResidencia.limiteEstoqueBaixo !== undefined) {
+      setLimiteEstoqueBaixo(novaResidencia.limiteEstoqueBaixo);
+      try {
+        localStorage.setItem('limiteEstoqueBaixo', novaResidencia.limiteEstoqueBaixo);
+      } catch {}
+    }
+  };
+
+  const handleAtualizarPerfil = (novosDadosPerfil) => {
+    if (sessao && sessao.user) {
+      setSessao({
+        ...sessao,
+        user: {
+          ...sessao.user,
+          user_metadata: {
+            ...sessao.user.user_metadata,
+            ...novosDadosPerfil
+          }
+        }
+      });
+    }
   };
 
   useEffect(() => {
@@ -64,11 +96,17 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSessao(session);
+      if (session?.user?.user_metadata?.limiteEstoqueBaixo) {
+        setLimiteEstoqueBaixo(Number(session.user.user_metadata.limiteEstoqueBaixo));
+      }
       setVerificandoSessao(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSessao(session);
+      if (session?.user?.user_metadata?.limiteEstoqueBaixo) {
+        setLimiteEstoqueBaixo(Number(session.user.user_metadata.limiteEstoqueBaixo));
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -179,7 +217,7 @@ export default function App() {
 
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col justify-between p-6 transition-transform duration-300 ease-in-out
-        md:translate-x-0 md:static
+        md:translate-x-0 md:sticky md:top-0 md:h-screen
         ${sidebarAberta ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
       `}>
         <div className="space-y-8">
@@ -224,7 +262,6 @@ export default function App() {
         </div>
 
         <div className="space-y-4">
-          {/* Só exibe o alternador de tema se estiver ativo nas preferências */}
           {recursosAtivos.exibirModoEscuro && (
             <button
               onClick={alternarTema}
@@ -235,7 +272,6 @@ export default function App() {
             </button>
           )}
 
-          {/* Só exibe o botão de Sair se estiver ativo nas preferências */}
           {recursosAtivos.exibirSairConta && (
             <button
               onClick={() => supabase.auth.signOut()}
@@ -256,25 +292,26 @@ export default function App() {
       )}
 
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
-        {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} />}
+        {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} perfilUsuario={sessao.user.user_metadata} />}
         {telaAtiva === 'produtos' && (
           <Produtos produtos={produtos} onCriar={handleCriarProduto} onRepor={handleRepor} onConsumo={handleConsumo} onExcluir={handleExcluir} />
         )}
-        {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} />}
+        {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} limiteEstoqueBaixo={limiteEstoqueBaixo} />}
         {telaAtiva === 'historico' && <HistoricoGeral historicoInicial={historico} />}
         {telaAtiva === 'ajuda' && <Ajuda />}
         {telaAtiva === 'configuracoes' && (
           <Configuracoes 
-            perfilUsuario={sessao.user.user_metadata} 
+            perfilUsuario={{ ...sessao.user.user_metadata, limiteEstoqueBaixo }} 
             recursosAtivos={recursosAtivos} 
             onAtualizarRecursos={handleAtualizarRecursos}
+            onAtualizarResidencia={handleAtualizarResidencia}
+            onAtualizarPerfil={handleAtualizarPerfil}
             alternarTema={alternarTema}
             darkMode={darkMode}
           />
         )}
       </main>
 
-      {/* Só exibe o Assistente de IA se estiver ativo nas preferências */}
       {recursosAtivos.exibirIA && <AssistenteIA produtos={produtos} />}
 
     </div>

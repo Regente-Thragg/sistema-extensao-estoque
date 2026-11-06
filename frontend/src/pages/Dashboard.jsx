@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { buscarProdutos, buscarHistorico } from '../services/api';
 
-export default function Dashboard() {
+export default function Dashboard({ perfilUsuario }) {
   const [produtos, setProdutos] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -28,6 +28,10 @@ export default function Dashboard() {
   const totalNotificacoes = historico.length;
   const ultimasMovimentacoes = historico.slice(0, 5);
 
+  // Obtém o nome de usuário (ou nome completo como alternativa) e a foto de perfil cadastrada
+  const nomeUsuarioExibicao = perfilUsuario?.nomeUsuario || perfilUsuario?.nomeCompleto || 'Usuário';
+  const fotoPerfil = perfilUsuario?.fotoPerfil;
+
   if (carregando) {
     return (
       <div className="p-8 text-center text-gray-500 dark:text-gray-400">
@@ -44,8 +48,25 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Painel de Controle - Despensa em Casa</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Visão geral e indicadores do seu estoque doméstico inteligente.</p>
         </div>
-        <div className="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20 px-4 py-2 rounded-xl text-sm font-semibold shadow-xs whitespace-nowrap">
-          Residência Ativa
+        
+        {/* Bloco do canto superior direito exibindo o Nome de Usuário à esquerda e a Foto de Perfil à direita */}
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-4 py-2 rounded-2xl shadow-sm">
+          <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
+            {nomeUsuarioExibicao}
+          </span>
+          <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-lg border-2 border-indigo-500 overflow-hidden shadow-inner shrink-0">
+            {fotoPerfil ? (
+              fotoPerfil.length <= 2 ? (
+                <span className="select-none">{fotoPerfil}</span>
+              ) : (
+                <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
+              )
+            ) : (
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                {nomeUsuarioExibicao.substring(0, 2).toUpperCase()}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
