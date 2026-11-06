@@ -9,14 +9,11 @@ import AssistenteIA from './components/AssistenteIA';
 import Auth from './components/Auth';
 import { supabase, buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
 
-// Lê a preferência salva; se não houver, usa a preferência do sistema operacional
 function temaInicialEscuro() {
   try {
     const salvo = localStorage.getItem('theme');
     if (salvo) return salvo === 'dark';
-  } catch (e) {
-    // localStorage indisponível: segue para o padrão do sistema
-  }
+  } catch (e) {}
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
@@ -24,12 +21,27 @@ export default function App() {
   const [telaAtiva, setTelaAtiva] = useState('dashboard');
   const [sidebarAberta, setSidebarAberta] = useState(false);
   
-  // Estados de Sessão / Autenticação Supabase
   const [sessao, setSessao] = useState(null);
   const [verificandoSessao, setVerificandoSessao] = useState(true);
 
-  // Modo escuro
   const [darkMode, setDarkMode] = useState(temaInicialEscuro);
+
+  // Estado global para os toggles de recursos nativos (inicializa padrão ativado ou do localStorage)
+  const [recursosAtivos, setRecursosAtivos] = useState(() => {
+    try {
+      const salvo = localStorage.getItem('recursosAtivos');
+      return salvo ? JSON.parse(salvo) : { exibirIA: true, exibirModoEscuro: true, exibirSairConta: true };
+    } catch {
+      return { exibirIA: true, exibirModoEscuro: true, exibirSairConta: true };
+    }
+  });
+
+  const handleAtualizarRecursos = (novosRecursos) => {
+    setRecursosAtivos(novosRecursos);
+    try {
+      localStorage.setItem('recursosAtivos', JSON.stringify(novosRecursos));
+    } catch {}
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -40,19 +52,15 @@ export default function App() {
     }
     try {
       localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-    } catch (e) {
-      // ignora falha ao salvar
-    }
+    } catch (e) {}
   }, [darkMode]);
 
   const alternarTema = () => setDarkMode((atual) => !atual);
 
-  // Estados globais centralizados na aplicação
   const [produtos, setProdutos] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  // Gerenciamento de Sessão via Supabase Auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSessao(session);
@@ -66,7 +74,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Carrega os dados do servidor APENAS QUANDO HOUVER SESSÃO ATIVA
   useEffect(() => {
     async function carregarDadosGlobais() {
       if (!sessao) {
@@ -90,7 +97,6 @@ export default function App() {
     carregarDadosGlobais();
   }, [sessao]);
 
-  // Funções de ação que atualizam o banco e sincronizam o estado global instantaneamente
   const handleCriarProduto = async (novoProduto) => {
     const resultado = await criarProduto(novoProduto);
     if (resultado && !resultado.erro) {
@@ -129,7 +135,6 @@ export default function App() {
     return resposta;
   };
 
-  // Enquanto valida a sessão inicial
   if (verificandoSessao) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 font-medium">
@@ -138,7 +143,6 @@ export default function App() {
     );
   }
 
-  // Se o usuário não estiver autenticado, exibe a tela de login translúcida por cima
   if (!sessao) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-900">
@@ -163,7 +167,6 @@ export default function App() {
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 relative transition-colors duration-200">
 
-      {/* Botão flutuante para abrir o menu em telas pequenas caso ele esteja fechado */}
       {!sidebarAberta && (
         <button
           onClick={() => setSidebarAberta(true)}
@@ -174,7 +177,6 @@ export default function App() {
         </button>
       )}
 
-      {/* Menu Lateral Esquerdo */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col justify-between p-6 transition-transform duration-300 ease-in-out
         md:translate-x-0 md:static
@@ -190,7 +192,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Botão de fechar (seta) ao lado direito de GestãoFácil */}
             <button
               onClick={() => setSidebarAberta(false)}
               className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 transition"
@@ -201,68 +202,48 @@ export default function App() {
           </div>
 
           <nav className="space-y-2">
-            <button
-              onClick={() => { setTelaAtiva('dashboard'); setSidebarAberta(false); }}
-              className={classeBotaoMenu(telaAtiva === 'dashboard')}
-            >
+            <button onClick={() => { setTelaAtiva('dashboard'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'dashboard')}>
               <span>📊</span> Dashboard
             </button>
-
-            <button
-              onClick={() => { setTelaAtiva('produtos'); setSidebarAberta(false); }}
-              className={classeBotaoMenu(telaAtiva === 'produtos')}
-            >
+            <button onClick={() => { setTelaAtiva('produtos'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'produtos')}>
               <span>🍎</span> Itens e Estoque
             </button>
-
-            <button
-              onClick={() => { setTelaAtiva('relatorios'); setSidebarAberta(false); }}
-              className={classeBotaoMenu(telaAtiva === 'relatorios')}
-            >
+            <button onClick={() => { setTelaAtiva('relatorios'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'relatorios')}>
               <span>📈</span> Relatórios
             </button>
-
-            <button
-              onClick={() => { setTelaAtiva('historico'); setSidebarAberta(false); }}
-              className={classeBotaoMenu(telaAtiva === 'historico')}
-            >
+            <button onClick={() => { setTelaAtiva('historico'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'historico')}>
               <span>🔔</span> Histórico Geral
             </button>
-
-            <button
-              onClick={() => { setTelaAtiva('ajuda'); setSidebarAberta(false); }}
-              className={classeBotaoMenu(telaAtiva === 'ajuda')}
-            >
+            <button onClick={() => { setTelaAtiva('ajuda'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'ajuda')}>
               <span>❓</span> Ajuda
             </button>
-
-            <button
-              onClick={() => { setTelaAtiva('configuracoes'); setSidebarAberta(false); }}
-              className={classeBotaoMenu(telaAtiva === 'configuracoes')}
-            >
+            <button onClick={() => { setTelaAtiva('configuracoes'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'configuracoes')}>
               <span>⚙️</span> Configurações
             </button>
           </nav>
         </div>
 
         <div className="space-y-4">
-          {/* Alternador de tema */}
-          <button
-            onClick={alternarTema}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition"
-            title="Alternar modo escuro"
-            aria-pressed={darkMode}
-          >
-            {darkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
-          </button>
+          {/* Só exibe o alternador de tema se estiver ativo nas preferências */}
+          {recursosAtivos.exibirModoEscuro && (
+            <button
+              onClick={alternarTema}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition"
+              title="Alternar modo escuro"
+            >
+              {darkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
+            </button>
+          )}
 
-          {/* Botão de Logout / Sair da Conta */}
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition"
-          >
-            🚪 Sair da Conta
-          </button>
+          {/* Só exibe o botão de Sair se estiver ativo nas preferências */}
+          {recursosAtivos.exibirSairConta && (
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition"
+            >
+              🚪 Sair da Conta
+            </button>
+          )}
 
           <div className="text-xs text-slate-500 text-center border-t border-slate-800 pt-4">
             Projeto Extensão - TSI
@@ -270,34 +251,31 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Fundo escurecido ao abrir o menu no celular */}
       {sidebarAberta && (
-        <div
-          onClick={() => setSidebarAberta(false)}
-          className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
-        />
+        <div onClick={() => setSidebarAberta(false)} className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm" />
       )}
 
-      {/* Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
         {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} />}
         {telaAtiva === 'produtos' && (
-          <Produtos
-            produtos={produtos}
-            onCriar={handleCriarProduto}
-            onRepor={handleRepor}
-            onConsumo={handleConsumo}
-            onExcluir={handleExcluir}
-          />
+          <Produtos produtos={produtos} onCriar={handleCriarProduto} onRepor={handleRepor} onConsumo={handleConsumo} onExcluir={handleExcluir} />
         )}
         {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} />}
         {telaAtiva === 'historico' && <HistoricoGeral historicoInicial={historico} />}
         {telaAtiva === 'ajuda' && <Ajuda />}
-        {telaAtiva === 'configuracoes' && <Configuracoes />}
+        {telaAtiva === 'configuracoes' && (
+          <Configuracoes 
+            perfilUsuario={sessao.user.user_metadata} 
+            recursosAtivos={recursosAtivos} 
+            onAtualizarRecursos={handleAtualizarRecursos}
+            alternarTema={alternarTema}
+            darkMode={darkMode}
+          />
+        )}
       </main>
 
-      {/* Componente Flutuante do Assistente de Inteligência Artificial */}
-      <AssistenteIA produtos={produtos} />
+      {/* Só exibe o Assistente de IA se estiver ativo nas preferências */}
+      {recursosAtivos.exibirIA && <AssistenteIA produtos={produtos} />}
 
     </div>
   );

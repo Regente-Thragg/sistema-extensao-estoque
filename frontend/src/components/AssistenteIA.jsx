@@ -1,5 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// Ícone animado de IA: três estrelas que "piscam" em sequência, uma ultrapassando a outra
+function EstrelasIA() {
+  const caminho = 'M12 0C12.6 6.5 17.5 11.4 24 12C17.5 12.6 12.6 17.5 12 24C11.4 17.5 6.5 12.6 0 12C6.5 11.4 11.4 6.5 12 0Z';
+  const estrelas = [
+    { tamanho: 17, esquerda: 0, topo: 11, atraso: '0s' },
+    { tamanho: 12, esquerda: 15, topo: 0, atraso: '0.4s' },
+    { tamanho: 8, esquerda: 18, topo: 17, atraso: '0.8s' },
+  ];
+
+  return (
+    <span className="relative inline-block shrink-0" style={{ width: 28, height: 28 }} aria-hidden="true">
+      <style>{`
+        @keyframes gf-estrela-ia {
+          0%, 100% { transform: scale(0.5) rotate(0deg);  opacity: 0.35; }
+          35%      { transform: scale(1.2) rotate(45deg); opacity: 1; }
+          70%      { transform: scale(0.8) rotate(90deg); opacity: 0.7; }
+        }
+        .gf-estrela-ia { animation: gf-estrela-ia 2s ease-in-out infinite; transform-origin: center; }
+        @media (prefers-reduced-motion: reduce) {
+          .gf-estrela-ia { animation: none; opacity: 1; }
+        }
+      `}</style>
+      {estrelas.map((e, i) => (
+        <svg
+          key={i}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="gf-estrela-ia absolute"
+          style={{ width: e.tamanho, height: e.tamanho, left: e.esquerda, top: e.topo, animationDelay: e.atraso }}
+        >
+          <path d={caminho} />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
 export default function AssistenteIA({ produtos }) {
   const [aberto, setAberto] = useState(false);
   const [mensagens, setMensagens] = useState([
@@ -143,7 +180,7 @@ export default function AssistenteIA({ produtos }) {
           className="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition transform hover:scale-105 group"
           title="Abrir Assistente IA"
         >
-          <span className="text-2xl animate-bounce">✨</span>
+          <EstrelasIA />
           <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ease-in-out text-sm font-semibold px-0 group-hover:px-2">
             Assistente IA
           </span>

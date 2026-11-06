@@ -11,6 +11,7 @@ export default function Auth({ onLoginSucesso }) {
 
   // Campos do formulário
   const [email, setEmail] = useState('');
+  const [nomeCompleto, setNomeCompleto] = useState(''); // Novo campo de Nome Real
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [nomeUsuario, setNomeUsuario] = useState('');
@@ -190,6 +191,7 @@ export default function Auth({ onLoginSucesso }) {
           password: senha,
           options: {
             data: {
+              nome_completo: nomeCompleto,
               nome_usuario: nomeUsuario,
               data_nascimento: dataNascimento,
               cpf,
@@ -336,6 +338,21 @@ export default function Auth({ onLoginSucesso }) {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
                   placeholder="seu@email.com"
+                  required
+                />
+              </div>
+
+              {/* Nome Completo (Nome Real) */}
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome Completo</label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  value={nomeCompleto}
+                  onChange={(e) => setNomeCompleto(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                  placeholder="Ex: João da Silva"
                   required
                 />
               </div>
@@ -745,7 +762,7 @@ export default function Auth({ onLoginSucesso }) {
               <div className="text-xs text-gray-600 dark:text-gray-300 space-y-3 leading-relaxed">
                 <p><strong>1. Aceitação dos Termos:</strong> Ao criar uma conta no <strong>GestãoFácil</strong>, você concorda com estes termos de uso e com nossa política de privacidade. O sistema é fornecido gratuitamente para fins de controle de estoque residencial e despensa doméstica.</p>
                 <p><strong>2. Restrição de Idade (Mínimo 14 Anos):</strong> O uso da plataforma é restrito a indivíduos com idade igual ou superior a 14 anos. O cadastro de menores de 14 anos é estritamente proibido e resultará no bloqueio automático da criação da conta.</p>
-                <p><strong>3. Privacidade e Dados:</strong> Seus dados pessoais (como nome de usuário, e-mail, CPF e endereço) são armazenados de forma segura utilizando criptografia e isolamento por Row Level Security (RLS) no Supabase. Não compartilhamos suas informações com terceiros.</p>
+                <p><strong>3. Privacidade e Dados:</strong> Seus dados pessoais (como nome completo, nome de usuário, e-mail, CPF e endereço) são armazenados de forma segura utilizando criptografia e isolamento por Row Level Security (RLS) no Supabase. Não compartilhamos suas informações com terceiros.</p>
                 <p><strong>4. Responsabilidade da Conta:</strong> O usuário é responsável por manter a confidencialidade de sua senha e por todas as atividades realizadas em sua conta.</p>
                 <p><strong>5. Uso Adequado:</strong> O GestãoFácil destina-se exclusivamente ao gerenciamento doméstico de suprimentos. É proibido o uso da plataforma para fins ilícitos.</p>
                 <p><strong>6. Atualizações:</strong> Estes termos podem ser atualizados periodicamente para refletir melhorias no sistema e adequações regulatórias.</p>
