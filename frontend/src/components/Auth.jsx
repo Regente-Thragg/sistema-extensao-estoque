@@ -1,8 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/api';
 
-export default function Auth({ onLoginSucesso }) {
-  const [modo, setModo] = useState('login'); // 'login', 'cadastro', 'esqueci-senha', 'verificar-codigo', 'nova-senha'
+// Lido uma única vez, quando o módulo carrega: o Supabase processa o link do e-mail
+// (cria uma sessão temporária) e logo depois limpa o "#access_token=..." da URL.
+const paramsDoLink = new URLSearchParams(
+  (typeof window !== 'undefined' ? window.location.hash : '').replace(/^#/, '')
+);
+
+// true quando a página foi aberta pelo botão "Redefinir senha" do e-mail
+export const abriuPorLinkDeRecuperacao = paramsDoLink.get('type') === 'recovery';
+
+// Link vencido ou já usado (o Gmail às vezes "pré-abre" links e consome o código)
+const erroDoLinkInicial = paramsDoLink.get('error')
+  ? (paramsDoLink.get('error_code') === 'otp_expired'
+      ? 'O link de recuperação expirou ou já foi usado. Solicite um novo link abaixo.'
+      : 'Link de recuperação inválido. Solicite um novo link abaixo.')
+  : '';
+
+export default function Auth({ onLoginSucesso, modoInicial = 'login', onSenhaAtualizada }) {
+  const [modo, setModo] = useState(erroDoLinkInicial && modoInicial === 'login' ? 'esqueci-senha' : modoInicial); // 'login', 'cadastro', 'esqueci-senha', 'verificar-codigo', 'nova-senha'
   
   // Visibilidade de senha
   const [mostrarSenhaLogin, setMostrarSenhaLogin] = useState(false);
@@ -37,8 +53,8 @@ export default function Auth({ onLoginSucesso }) {
   const [codigoOtp, setCodigoOtp] = useState('');
 
   // Estados de controle
-  const [erro, setErro] = useState('');
-  const [sucesso, setSucesso] = useState('');
+  const [erro, setErro] = useState(erroDoLinkInicial);
+  const [sucesso, setSucesso] = useState(modoInicial === 'nova-senha' ? 'Link verificado! Defina sua nova senha.' : '');
   const [carregando, setCarregando] = useState(false);
   const [tempoReenvio, setTempoReenvio] = useState(0);
 
@@ -264,6 +280,8 @@ export default function Auth({ onLoginSucesso }) {
         setSenha('');
         setConfirmarSenha('');
         setSucesso('');
+        window.history.replaceState(null, '', window.location.pathname);
+        if (onSenhaAtualizada) onSenhaAtualizada();
       }, 2500);
     } catch (err) {
       setErro(err.message || 'Erro ao atualizar a senha.');

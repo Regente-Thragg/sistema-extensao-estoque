@@ -6,7 +6,7 @@ import HistoricoGeral from './pages/HistoricoGeral';
 import Ajuda from './pages/Ajuda';
 import Configuracoes from './pages/Configuracoes';
 import AssistenteIA from './components/AssistenteIA';
-import Auth from './components/Auth';
+import Auth, { abriuPorLinkDeRecuperacao } from './components/Auth';
 import { supabase, buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
 
 function temaInicialEscuro() {
@@ -23,6 +23,9 @@ export default function App() {
   
   const [sessao, setSessao] = useState(null);
   const [verificandoSessao, setVerificandoSessao] = useState(true);
+
+  // true enquanto o usuário veio do link "Redefinir senha" do e-mail e ainda não definiu a nova senha
+  const [recuperandoSenha, setRecuperandoSenha] = useState(abriuPorLinkDeRecuperacao);
 
   const [darkMode, setDarkMode] = useState(temaInicialEscuro);
 
@@ -103,6 +106,7 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === 'PASSWORD_RECOVERY') setRecuperandoSenha(true);
       setSessao(session);
       if (session?.user?.user_metadata?.limiteEstoqueBaixo) {
         setLimiteEstoqueBaixo(Number(session.user.user_metadata.limiteEstoqueBaixo));
@@ -114,7 +118,7 @@ export default function App() {
 
   useEffect(() => {
     async function carregarDadosGlobais() {
-      if (!sessao) {
+      if (!sessao || recuperandoSenha) {
         setCarregando(false);
         return;
       }
@@ -133,7 +137,7 @@ export default function App() {
       }
     }
     carregarDadosGlobais();
-  }, [sessao]);
+  }, [sessao, recuperandoSenha]);
 
   const handleCriarProduto = async (novoProduto) => {
     const resultado = await criarProduto(novoProduto);
@@ -181,10 +185,15 @@ export default function App() {
     );
   }
 
-  if (!sessao) {
+  // Sem sessão OU abriu pelo link de recuperação (que cria uma sessão temporária): mostra o Auth
+  if (!sessao || recuperandoSenha) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-900">
-        <Auth onLoginSucesso={(user) => setSessao({ user })} />
+        <Auth
+          modoInicial={recuperandoSenha ? 'nova-senha' : 'login'}
+          onLoginSucesso={(user) => setSessao({ user })}
+          onSenhaAtualizada={() => setRecuperandoSenha(false)}
+        />
       </div>
     );
   }
