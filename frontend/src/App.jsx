@@ -261,7 +261,7 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {recursosAtivos.exibirModoEscuro && (
             <button
               onClick={alternarTema}
@@ -281,7 +281,7 @@ export default function App() {
             </button>
           )}
 
-          <div className="text-xs text-slate-500 text-center border-t border-slate-800 pt-4">
+          <div className="text-xs text-slate-500 text-center border-t border-slate-800 pt-3 mt-2">
             Projeto Extensão - TSI
           </div>
         </div>

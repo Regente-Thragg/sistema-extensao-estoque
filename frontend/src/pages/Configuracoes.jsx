@@ -178,20 +178,28 @@ export default function Configuracoes({
 
     try {
       const dadosAvaliacao = {
-        pastaDriveId: '1dHhRHTBb3gF3bLsSev30FF82BpcKx7xN',
         usuario: perfilUsuario?.email || 'Anônimo',
         estrelas,
         comentario: comentarioAvaliacao,
-        data: new Date().toISOString()
+        data: new Date().toLocaleString()
       };
 
-      console.log('Enviando avaliação para Google Drive:', dadosAvaliacao);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const urlWebHook = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
 
-      setSucesso('Avaliação enviada com sucesso para nossa equipe! Obrigado pelo feedback.');
+      await fetch(urlWebHook, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dadosAvaliacao)
+      });
+
+      setSucesso('Avaliação enviada com sucesso para sua pasta no Drive! Obrigado pelo feedback.');
       setComentarioAvaliacao('');
       setEstrelas(0);
     } catch (err) {
+      console.error('Erro ao enviar avaliação:', err);
       setErro('Erro ao enviar avaliação. Tente novamente.');
     } finally {
       setEnviandoAvaliacao(false);

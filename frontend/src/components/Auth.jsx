@@ -437,13 +437,14 @@ export default function Auth({ onLoginSucesso }) {
                     type="text"
                     autoComplete="off"
                     data-lpignore="true"
+                    disabled={eMenorDe14}
                     value={cpf}
                     onChange={(e) => setCpf(formatarCpf(e.target.value))}
-                    className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-sm ${
+                    className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-sm disabled:opacity-50 ${
                       eMenorDe14 ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-700'
                     }`}
                     placeholder="000.000.000-00"
-                    required
+                    required={!eMenorDe14}
                   />
                 </div>
               </div>
