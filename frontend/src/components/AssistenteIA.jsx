@@ -119,7 +119,6 @@ export default function AssistenteIA({ produtos }) {
     setCarregando(true);
 
     try {
-      // Pega a chave de forma segura da variável de ambiente do Vite
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
       if (!apiKey) {
@@ -146,7 +145,8 @@ export default function AssistenteIA({ produtos }) {
         });
       }
 
-      const respostaApi = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      // Requisição padrão utilizando a chave via parâmetro 'key' na URL
+      const respostaApi = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -155,6 +155,11 @@ export default function AssistenteIA({ produtos }) {
       });
 
       const dados = await respostaApi.json();
+      
+      if (dados.error) {
+        throw new Error(dados.error.message || "Erro retornado pela API do Gemini");
+      }
+
       const respostaIA = dados.candidates?.[0]?.content?.parts?.[0]?.text || "Desculpe, não consegui processar sua solicitação no momento.";
 
       setMensagens([...novasMensagens, { remetente: 'ia', texto: respostaIA }]);
@@ -162,7 +167,7 @@ export default function AssistenteIA({ produtos }) {
 
     } catch (erro) {
       console.error("Erro ao falar com a IA:", erro);
-      const msgErro = "Ops! Ocorreu um erro ao conectar com o assistente inteligente. Verifique a chave de API no arquivo .env.";
+      const msgErro = `Ops! Erro ao conectar com o assistente: ${erro.message}`;
       setMensagens([...novasMensagens, { remetente: 'ia', texto: msgErro }]);
     } finally {
       setCarregando(false);
