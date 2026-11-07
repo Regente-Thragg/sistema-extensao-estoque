@@ -34,6 +34,52 @@ function EstrelasIA() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Configuração do Gemini
+// Os modelos mudam rápido (o 1.5 e o 2.5 já foram desativados). "gemini-flash-latest" é um
+// apelido que o Google mantém apontando para o Flash mais recente (hoje, o 3.8 Flash).
+// Para fixar outro modelo, crie VITE_GEMINI_MODEL no .env (e na Vercel) sem mexer no código.
+// ---------------------------------------------------------------------------
+const GEMINI_URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const MODELO_PRINCIPAL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-flash-latest';
+const MODELOS_RESERVA = ['gemini-3.1-flash-lite'];
+
+// Tenta o modelo principal; se ele não existir (404), estiver sem cota (429) ou sobrecarregado (503),
+// tenta o próximo da lista. Qualquer outro erro (chave inválida, requisição ruim) é repassado direto.
+async function chamarGemini(apiKey, corpo) {
+  const modelos = [...new Set([MODELO_PRINCIPAL, ...MODELOS_RESERVA])];
+  let ultimoErro = null;
+
+  for (const modelo of modelos) {
+    const resposta = await fetch(`${GEMINI_URL_BASE}/${modelo}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify(corpo)
+    });
+    const dados = await resposta.json().catch(() => ({}));
+
+    if (resposta.ok && !dados.error) return dados;
+
+    ultimoErro = { status: resposta.status, mensagem: dados.error?.message || `Erro HTTP ${resposta.status}` };
+    if (![404, 429, 503].includes(resposta.status)) break;
+  }
+
+  const erro = new Error(ultimoErro.mensagem);
+  erro.status = ultimoErro.status;
+  throw erro;
+}
+
+function mensagemAmigavel(erro) {
+  const s = erro.status;
+  if (!s && erro.name === 'TypeError') return 'Não foi possível se conectar à IA. Verifique sua internet e as restrições da chave de API.';
+  if (s === 400 && /api key/i.test(erro.message)) return 'A chave da API do Gemini é inválida. Confira a variável VITE_GEMINI_API_KEY.';
+  if (s === 401 || s === 403) return 'A chave da API não tem permissão para usar o Gemini. Verifique se a API está ativada e se as restrições da chave permitem este site.';
+  if (s === 404) return 'O modelo de IA configurado não está mais disponível. Atualize ou remova a variável VITE_GEMINI_MODEL.';
+  if (s === 429) return 'O limite de uso da IA foi atingido por agora. Aguarde um pouco e tente de novo.';
+  if (s === 503) return 'O serviço de IA está sobrecarregado no momento. Tente novamente em instantes.';
+  return `Erro ao conectar com o assistente: ${erro.message}`;
+}
+
 export default function AssistenteIA({ produtos }) {
   const [aberto, setAberto] = useState(false);
   const [mensagens, setMensagens] = useState([
@@ -145,29 +191,26 @@ export default function AssistenteIA({ produtos }) {
         });
       }
 
-      // Atualizado para gemini-1.5-flash
-      const respostaApi = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: partesConteudo }]
-        })
+      const dados = await chamarGemini(apiKey, {
+        contents: [{ role: "user", parts: partesConteudo }]
       });
 
-      const dados = await respostaApi.json();
-      
-      if (dados.error) {
-        throw new Error(dados.error.message || "Erro retornado pela API do Gemini");
-      }
+      const textoResposta = (dados.candidates?.[0]?.content?.parts || [])
+        .map((parte) => parte.text)
+        .filter(Boolean)
+        .join('');
 
-      const respostaIA = dados.candidates?.[0]?.content?.parts?.[0]?.text || "Desculpe, não consegui processar sua solicitação no momento.";
+      const respostaIA = textoResposta
+        || (dados.promptFeedback?.blockReason
+              ? "Não consegui responder a essa solicitação. Tente reformular a pergunta."
+              : "Desculpe, não consegui processar sua solicitação no momento.");
 
       setMensagens([...novasMensagens, { remetente: 'ia', texto: respostaIA }]);
       falarTexto(respostaIA);
 
     } catch (erro) {
       console.error("Erro ao falar com a IA:", erro);
-      const msgErro = `Ops! Erro ao conectar com o assistente: ${erro.message}`;
+      const msgErro = `Ops! ${mensagemAmigavel(erro)}`;
       setMensagens([...novasMensagens, { remetente: 'ia', texto: msgErro }]);
     } finally {
       setCarregando(false);
