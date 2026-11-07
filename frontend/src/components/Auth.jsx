@@ -8,10 +8,11 @@ export default function Auth({ onLoginSucesso }) {
   const [mostrarSenhaLogin, setMostrarSenhaLogin] = useState(false);
   const [mostrarSenhaCadastro, setMostrarSenhaCadastro] = useState(false);
   const [mostrarSenhaNova, setMostrarSenhaNova] = useState(false);
+  const [mostrarConfirmarNova, setMostrarConfirmarNova] = useState(false);
 
   // Campos do formulário
   const [email, setEmail] = useState('');
-  const [nomeCompleto, setNomeCompleto] = useState(''); // Novo campo de Nome Real
+  const [nomeCompleto, setNomeCompleto] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [nomeUsuario, setNomeUsuario] = useState('');
@@ -40,6 +41,21 @@ export default function Auth({ onLoginSucesso }) {
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [tempoReenvio, setTempoReenvio] = useState(0);
+
+  // Monitorar eventos de autenticação do Supabase (ex: link de recuperação de senha clicado no e-mail)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setModo('nova-senha');
+        setErro('');
+        setSucesso('Sessão de recuperação iniciada. Defina sua nova senha.');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Temporizador para reenviar código (120 segundos)
   useEffect(() => {
@@ -95,7 +111,7 @@ export default function Auth({ onLoginSucesso }) {
     const temMinuscula = /[a-z]/.test(pass);
     const temNumero = /\d/.test(pass);
     const temEspecial = /[@#%&*-_+.]/.test(pass);
-    const semEspacos = !/\s/.test(pass); // Não permite espaços
+    const semEspacos = !/\s/.test(pass);
     const caracteresValidos = /^[a-zA-Z0-9@#%&*-_+.]+$/.test(pass);
     return {
       tamanho,
@@ -215,13 +231,42 @@ export default function Auth({ onLoginSucesso }) {
     setErro('');
     setCarregando(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      // Garante que o redirecionamento aponte para a raiz da aplicação ao clicar no link do e-mail
+      const redirectTo = window.location.origin;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
-      setSucesso('Código de recuperação enviado para o seu e-mail!');
-      setModo('verificar-codigo');
+      setSucesso('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
       setTempoReenvio(120);
     } catch (err) {
       setErro(err.message || 'Erro ao enviar e-mail de recuperação.');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const handleAtualizarSenha = async (e) => {
+    e.preventDefault();
+    setErro('');
+    setSucesso('');
+
+    if (!statusPass.valido) return setErro('A nova senha não atende aos requisitos mínimos.');
+    if (senha !== confirmarSenha) return setErro('As senhas não coincidem.');
+
+    setCarregando(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: senha });
+      if (error) throw error;
+
+      setSucesso('Senha atualizada com sucesso! Redirecionando para o login...');
+      await supabase.auth.signOut(); // Encerra a sessão temporária de recovery
+      setTimeout(() => {
+        setModo('login');
+        setSenha('');
+        setConfirmarSenha('');
+        setSucesso('');
+      }, 2500);
+    } catch (err) {
+      setErro(err.message || 'Erro ao atualizar a senha.');
     } finally {
       setCarregando(false);
     }
@@ -321,13 +366,11 @@ export default function Auth({ onLoginSucesso }) {
         {modo === 'cadastro' && (
           <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto max-h-[55vh] pr-1" autoComplete="off">
             
-            {/* SEÇÃO 1: DADOS PESSOAIS */}
             <div className="space-y-3">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 block border-b pb-1 dark:border-gray-800">
                 Dados Pessoais
               </span>
 
-              {/* E-mail */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">E-mail</label>
                 <input
@@ -342,7 +385,6 @@ export default function Auth({ onLoginSucesso }) {
                 />
               </div>
 
-              {/* Nome Completo (Nome Real) */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome Completo</label>
                 <input
@@ -357,7 +399,6 @@ export default function Auth({ onLoginSucesso }) {
                 />
               </div>
 
-              {/* Nome de Usuário */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome de Usuário</label>
                 <input
@@ -380,7 +421,6 @@ export default function Auth({ onLoginSucesso }) {
                 </ul>
               </div>
 
-              {/* Senha */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Senha</label>
                 <div className="relative">
@@ -414,7 +454,6 @@ export default function Auth({ onLoginSucesso }) {
                 </ul>
               </div>
 
-              {/* Data Nascimento e CPF */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
@@ -449,7 +488,6 @@ export default function Auth({ onLoginSucesso }) {
                 </div>
               </div>
 
-              {/* AVISO DE IDADE MÍNIMA */}
               {eMenorDe14 && (
                 <p className="text-xs text-red-500 font-semibold text-center pt-1">
                   ⚠️ Você deve ter 14 anos ou mais para continuar.
@@ -457,11 +495,9 @@ export default function Auth({ onLoginSucesso }) {
               )}
             </div>
 
-            {/* SEÇÃO 2: ENDEREÇO */}
             <div className={`space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800 ${eMenorDe14 ? 'opacity-40 pointer-events-none' : ''}`}>
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Endereço</span>
               
-              {/* Linha 1: CEP e Rua */}
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
@@ -487,7 +523,6 @@ export default function Auth({ onLoginSucesso }) {
                 />
               </div>
 
-              {/* Linha 2: Número e Bairro */}
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
@@ -513,7 +548,6 @@ export default function Auth({ onLoginSucesso }) {
                 />
               </div>
 
-              {/* Checkbox Sem Número */}
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
@@ -528,7 +562,6 @@ export default function Auth({ onLoginSucesso }) {
                 </label>
               </div>
 
-              {/* Linha 3: Complemento e Descrição */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <input
                   type="text"
@@ -556,7 +589,6 @@ export default function Auth({ onLoginSucesso }) {
                 />
               </div>
 
-              {/* Linha 4: Cidade e Estado */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <input
                   type="text"
@@ -583,7 +615,6 @@ export default function Auth({ onLoginSucesso }) {
               </div>
             </div>
 
-            {/* Termos de Uso */}
             <div className={`flex items-center gap-2 pt-2 ${eMenorDe14 ? 'opacity-40 pointer-events-none' : ''}`}>
               <input
                 type="checkbox"
@@ -635,7 +666,7 @@ export default function Auth({ onLoginSucesso }) {
               disabled={carregando}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl text-sm transition"
             >
-              {carregando ? 'Enviando...' : 'Enviar código de recuperação'}
+              {carregando ? 'Enviando...' : 'Enviar link de recuperação'}
             </button>
             <button
               type="button"
@@ -647,62 +678,19 @@ export default function Auth({ onLoginSucesso }) {
           </form>
         )}
 
-        {/* VERIFICAÇÃO OTP 6 DÍGITOS */}
-        {modo === 'verificar-codigo' && (
-          <div className="space-y-4 text-center">
-            <p className="text-xs text-gray-500">Enviamos um código de 6 dígitos para o e-mail: <span className="font-semibold">{email}</span></p>
-            <input
-              type="text"
-              maxLength={6}
-              value={codigoOtp}
-              onChange={(e) => setCodigoOtp(e.target.value)}
-              className="w-full text-center tracking-widest text-2xl px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
-              placeholder="000000"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (codigoOtp.length === 6) setModo('nova-senha');
-                else setErro('Digite os 6 dígitos do código.');
-              }}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl text-sm transition"
-            >
-              Confirmar Código
-            </button>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                disabled={tempoReenvio > 0}
-                onClick={() => { setTempoReenvio(120); setSucesso('Novo código reenviado!'); }}
-                className="text-xs text-indigo-600 hover:underline disabled:opacity-50 disabled:no-underline"
-              >
-                {tempoReenvio > 0 ? `Reenviar código (${Math.floor(tempoReenvio / 60)}:${String(tempoReenvio % 60).padStart(2, '0')})` : 'Reenviar código'}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => { setModo('login'); setErro(''); setSucesso(''); }}
-              className="w-full text-center text-xs text-gray-400 hover:underline pt-1"
-            >
-              Cancelar e voltar ao login
-            </button>
-          </div>
-        )}
-
-        {/* NOVA SENHA */}
+        {/* NOVA SENHA (EXIBIDO APÓS CLICAR NO LINK DO E-MAIL) */}
         {modo === 'nova-senha' && (
-          <div className="space-y-4">
+          <form onSubmit={handleAtualizarSenha} className="space-y-4">
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Criar nova senha</label>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Insira a nova senha</label>
               <div className="relative">
                 <input
                   type={mostrarSenhaNova ? "text" : "password"}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                  placeholder="senha"
+                  placeholder="Nova senha"
+                  required
                 />
                 <button
                   type="button"
@@ -723,28 +711,34 @@ export default function Auth({ onLoginSucesso }) {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Confirmar nova senha</label>
-              <input
-                type="password"
-                value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-                placeholder="senha"
-              />
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Confirmar senha</label>
+              <div className="relative">
+                <input
+                  type={mostrarConfirmarNova ? "text" : "password"}
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                  placeholder="Confirme a nova senha"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfirmarNova(!mostrarConfirmarNova)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  {mostrarConfirmarNova ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
 
             <button
-              type="button"
-              disabled={!statusPass.valido || senha !== confirmarSenha}
-              onClick={() => {
-                setSucesso('Senha atualizada com sucesso!');
-                setTimeout(() => { setModo('login'); setSenha(''); setConfirmarSenha(''); }, 2000);
-              }}
+              type="submit"
+              disabled={carregando || !statusPass.valido || senha !== confirmarSenha}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-xl text-sm transition disabled:opacity-50"
             >
-              Atualizar Senha
+              {carregando ? 'Atualizando...' : 'Confirmar e Atualizar Senha'}
             </button>
-          </div>
+          </form>
         )}
 
         {/* MODAL DOS TERMOS DE USO E POLÍTICA DE PRIVACIDADE */}

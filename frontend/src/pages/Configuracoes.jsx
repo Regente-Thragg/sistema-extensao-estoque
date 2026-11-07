@@ -43,9 +43,19 @@ export default function Configuracoes({
     cep: '', rua: '', numero: '', semNumero: false, bairro: '', cidade: '', estado: '', complemento: '', descricao: ''
   });
 
+  // Estados de Avaliação (Estilo Google Play Store)
   const [estrelas, setEstrelas] = useState(0);
   const [comentarioAvaliacao, setComentarioAvaliacao] = useState('');
   const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
+  const [editandoAvaliacao, setEditandoAvaliacao] = useState(false);
+  const [avaliacaoSalva, setAvaliacaoSalva] = useState(() => {
+    try {
+      const salvo = localStorage.getItem(`avaliacao_${perfilUsuario?.email || 'anon'}`);
+      return salvo ? JSON.parse(salvo) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [exibirIA, setExibirIA] = useState(recursosAtivos?.exibirIA ?? true);
   const [exibirModoEscuro, setExibirModoEscuro] = useState(recursosAtivos?.exibirModoEscuro ?? true);
@@ -195,7 +205,19 @@ export default function Configuracoes({
         body: JSON.stringify(dadosAvaliacao)
       });
 
-      setSucesso('Avaliação enviada com sucesso para sua pasta no Drive! Obrigado pelo feedback.');
+      const novaAval = {
+        estrelas,
+        comentario: comentarioAvaliacao,
+        data: new Date().toLocaleString()
+      };
+
+      setAvaliacaoSalva(novaAval);
+      try {
+        localStorage.setItem(`avaliacao_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaAval));
+      } catch {}
+
+      setEditandoAvaliacao(false);
+      setSucesso(editandoAvaliacao ? 'Avaliação atualizada com sucesso!' : 'Avaliação enviada com sucesso para sua pasta no Drive! Obrigado pelo feedback.');
       setComentarioAvaliacao('');
       setEstrelas(0);
     } catch (err) {
@@ -205,6 +227,23 @@ export default function Configuracoes({
       setEnviandoAvaliacao(false);
       setTimeout(() => setSucesso(''), 4000);
     }
+  };
+
+  const handleIniciarEdicaoAvaliacao = () => {
+    setEstrelas(avaliacaoSalva.estrelas);
+    setComentarioAvaliacao(avaliacaoSalva.comentario);
+    setEditandoAvaliacao(true);
+  };
+
+  const handleExcluirAvaliacao = () => {
+    try {
+      localStorage.removeItem(`avaliacao_${perfilUsuario?.email || 'anon'}`);
+    } catch {}
+    setAvaliacaoSalva(null);
+    setEstrelas(0);
+    setComentarioAvaliacao('');
+    setSucesso('Sua avaliação foi excluída.');
+    setTimeout(() => setSucesso(''), 3000);
   };
 
   const handleSalvarSistema = () => {
@@ -395,26 +434,68 @@ export default function Configuracoes({
         )}
 
         {abaAtiva === 'avaliacoes' && (
-          <form onSubmit={handleEnviarAvaliacao} className="space-y-4">
+          <div className="space-y-4">
             <h3 className="text-base font-bold text-gray-900 dark:text-white border-b pb-2 dark:border-gray-800">Avalie o Sistema</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Sua opinião é fundamental para aprimorarmos o GestãoFácil.</p>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Classificação</label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button key={star} type="button" aria-label={`${star} ${star === 1 ? 'estrela' : 'estrelas'}`} onClick={() => { setEstrelas(star); setErro(''); }} className={`text-2xl transition ${star <= estrelas ? 'text-amber-400 scale-110' : 'text-gray-300 dark:text-gray-700'}`}>★</button>
-                ))}
+            
+            {avaliacaoSalva && !editandoAvaliacao ? (
+              <div className="p-5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-amber-400 text-lg">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <span key={s}>{s <= avaliacaoSalva.estrelas ? '★' : '☆'}</span>
+                    ))}
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({avaliacaoSalva.estrelas}/5)</span>
+                  </div>
+                  <span className="text-[11px] text-gray-400">{avaliacaoSalva.data}</span>
+                </div>
+                
+                <p className="text-xs text-gray-700 dark:text-gray-300 italic bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                  "{avaliacaoSalva.comentario}"
+                </p>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={handleIniciarEdicaoAvaliacao} className={btn('suave', 'sm')}>
+                    ✏️ Editar Avaliação
+                  </button>
+                  <button type="button" onClick={handleExcluirAvaliacao} className={btn('suaveVermelho', 'sm')}>
+                    🗑️ Excluir
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Seu Comentário</label>
-                <span className={`text-[11px] ${comentarioAvaliacao.length > 600 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>{comentarioAvaliacao.length}/600 caracteres</span>
-              </div>
-              <textarea rows={4} maxLength={600} value={comentarioAvaliacao} onChange={(e) => setComentarioAvaliacao(e.target.value)} placeholder="Escreva sua opinião, sugestões ou elogios aqui... (Você pode usar emojis do seu teclado 😊👍)" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500" required />
-            </div>
-            <button type="submit" disabled={enviandoAvaliacao || estrelas === 0 || !comentarioAvaliacao.trim()} className={`${btn('primario')} disabled:opacity-50 disabled:cursor-not-allowed`}>{enviandoAvaliacao ? 'Enviando...' : 'Enviar sua Avaliação'}</button>
-          </form>
+            ) : (
+              <form onSubmit={handleEnviarAvaliacao} className="space-y-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {editandoAvaliacao ? 'Edite sua avaliação abaixo:' : 'Sua opinião é fundamental para aprimorarmos o GestãoFácil.'}
+                </p>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Classificação</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button key={star} type="button" aria-label={`${star} ${star === 1 ? 'estrela' : 'estrelas'}`} onClick={() => { setEstrelas(star); setErro(''); }} className={`text-2xl transition ${star <= estrelas ? 'text-amber-400 scale-110' : 'text-gray-300 dark:text-gray-700'}`}>★</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Seu Comentário</label>
+                    <span className={`text-[11px] ${comentarioAvaliacao.length > 600 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>{comentarioAvaliacao.length}/600 caracteres</span>
+                  </div>
+                  <textarea rows={4} maxLength={600} value={comentarioAvaliacao} onChange={(e) => setComentarioAvaliacao(e.target.value)} placeholder="Escreva sua opinião, sugestões ou elogios aqui... (Você pode usar emojis do seu teclado 😊👍)" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-indigo-500" required />
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  {editandoAvaliacao && (
+                    <button type="button" onClick={() => setEditandoAvaliacao(false)} className={btn('neutro', 'sm')}>
+                      Cancelar
+                    </button>
+                  )}
+                  <button type="submit" disabled={enviandoAvaliacao || estrelas === 0 || !comentarioAvaliacao.trim()} className={`${btn('primario')} disabled:opacity-50 disabled:cursor-not-allowed`}>
+                    {enviandoAvaliacao ? 'Enviando...' : (editandoAvaliacao ? 'Atualizar Avaliação' : 'Enviar sua Avaliação')}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {abaAtiva === 'sistema' && (
