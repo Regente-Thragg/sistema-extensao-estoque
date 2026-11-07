@@ -145,7 +145,7 @@ export default function AssistenteIA({ produtos }) {
         });
       }
 
-      // Requisição padrão utilizando a chave via parâmetro 'key' na URL
+      // Atualizado para gemini-1.5-flash
       const respostaApi = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
