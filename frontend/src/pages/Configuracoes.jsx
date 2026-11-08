@@ -22,7 +22,21 @@ export default function Configuracoes({
   alternarTema,
   darkMode 
 }) {
-  const [abaAtiva, setAbaAtiva] = useState('residencia');
+  // Mantém a aba ativa salva no navegador para não resetar ao salvar/recarregar
+  const [abaAtiva, setAbaAtiva] = useState(() => {
+    try {
+      return localStorage.getItem('config_aba_ativa') || 'residencia';
+    } catch {
+      return 'residencia';
+    }
+  });
+
+  const trocarAba = (novaAba) => {
+    setAbaAtiva(novaAba);
+    try {
+      localStorage.setItem('config_aba_ativa', novaAba);
+    } catch {}
+  };
 
   const [nomeResidencia, setNomeResidencia] = useState(perfilUsuario?.nomeResidencia || 'Despensa em Casa');
   const [limiteEstoqueBaixo, setLimiteEstoqueBaixo] = useState(perfilUsuario?.limiteEstoqueBaixo || 3);
@@ -323,11 +337,11 @@ export default function Configuracoes({
       {erro && <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-600 rounded-xl text-xs font-medium">{erro}</div>}
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800 pb-3">
-        <button type="button" onClick={() => setAbaAtiva('residencia')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'residencia' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Residência</button>
-        <button type="button" onClick={() => setAbaAtiva('perfil')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'perfil' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Configurações de Perfil</button>
-        <button type="button" onClick={() => setAbaAtiva('pessoal')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'pessoal' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Informações Pessoais</button>
-        <button type="button" onClick={() => setAbaAtiva('avaliacoes')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'avaliacoes' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Avaliações</button>
-        <button type="button" onClick={() => setAbaAtiva('sistema')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'sistema' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Configurações do Sistema</button>
+        <button type="button" onClick={() => trocarAba('residencia')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'residencia' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Residência</button>
+        <button type="button" onClick={() => trocarAba('perfil')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'perfil' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Configurações de Perfil</button>
+        <button type="button" onClick={() => trocarAba('pessoal')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'pessoal' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Informações Pessoais</button>
+        <button type="button" onClick={() => trocarAba('avaliacoes')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'avaliacoes' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Avaliações</button>
+        <button type="button" onClick={() => trocarAba('sistema')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'sistema' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Configurações do Sistema</button>
       </div>
 
       <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 space-y-6">
