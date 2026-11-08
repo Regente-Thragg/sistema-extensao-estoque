@@ -89,8 +89,9 @@ export default function Configuracoes({
   const [sucesso, setSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  // URL unificada do Webhook do Google Apps Script
-  const URL_WEBHOOK_UNIFICADA = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
+  // URLs separadas para Endereços (Planilhas) e Avaliações (.txt)
+  const URL_WEBHOOK_ENDERECOS = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
+  const URL_WEBHOOK_AVALIACOES = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
 
   const formatarCep = (valor) => valor.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 9);
 
@@ -211,7 +212,7 @@ export default function Configuracoes({
         onAtualizarPerfil(novosDados);
       }
 
-      // 2. Envia para o Google Drive via Webhook unificado (Endereços)
+      // 2. Envia para o Google Drive via Webhook de Endereços (Planilhas)
       const dadosEnderecoWebhook = {
         tipo: 'ENDERECO_CLIENTE',
         usuario: perfilUsuario?.email || 'Anônimo',
@@ -220,7 +221,7 @@ export default function Configuracoes({
         dataAtualizacao: new Date().toLocaleString()
       };
 
-      await fetch(URL_WEBHOOK_UNIFICADA, {
+      await fetch(URL_WEBHOOK_ENDERECOS, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
@@ -246,6 +247,7 @@ export default function Configuracoes({
     setErro('');
 
     try {
+      // Envia para o Webhook dedicado de Avaliações (.txt)
       const dadosAvaliacao = {
         tipo: 'AVALIACAO',
         usuario: perfilUsuario?.email || 'Anônimo',
@@ -254,7 +256,7 @@ export default function Configuracoes({
         data: new Date().toLocaleString()
       };
 
-      await fetch(URL_WEBHOOK_UNIFICADA, {
+      await fetch(URL_WEBHOOK_AVALIACOES, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
