@@ -22,7 +22,6 @@ export default function Configuracoes({
   alternarTema,
   darkMode 
 }) {
-  // Mantém a aba ativa salva no navegador para não resetar ao salvar/recarregar
   const [abaAtiva, setAbaAtiva] = useState(() => {
     try {
       return localStorage.getItem('config_aba_ativa') || 'residencia';
@@ -57,7 +56,6 @@ export default function Configuracoes({
   });
   const [salvandoEndereco, setSalvandoEndereco] = useState(false);
 
-  // Estados de Avaliação (Estilo Google Play Store)
   const [estrelas, setEstrelas] = useState(0);
   const [comentarioAvaliacao, setComentarioAvaliacao] = useState('');
   const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
@@ -89,7 +87,6 @@ export default function Configuracoes({
   const [sucesso, setSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  // URLs separadas para Endereços (Planilhas) e Avaliações (.txt)
   const URL_WEBHOOK_ENDERECOS = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
   const URL_WEBHOOK_AVALIACOES = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
 
@@ -142,10 +139,7 @@ export default function Configuracoes({
         endereco
       };
 
-      const { error } = await supabase.auth.updateUser({
-        data: novosDados
-      });
-
+      const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
 
       if (onAtualizarPerfil) {
@@ -195,7 +189,6 @@ export default function Configuracoes({
     setErro('');
 
     try {
-      // 1. Atualiza no Supabase (auth user metadata)
       const novosDados = {
         nomeCompleto,
         nomeUsuario,
@@ -212,7 +205,6 @@ export default function Configuracoes({
         onAtualizarPerfil(novosDados);
       }
 
-      // 2. Envia para o Google Drive via Webhook de Endereços (Planilhas)
       const dadosEnderecoWebhook = {
         tipo: 'ENDERECO_CLIENTE',
         usuario: perfilUsuario?.email || 'Anônimo',
@@ -247,7 +239,6 @@ export default function Configuracoes({
     setErro('');
 
     try {
-      // Envia para o Webhook dedicado de Avaliações (.txt)
       const dadosAvaliacao = {
         tipo: 'AVALIACAO',
         usuario: perfilUsuario?.email || 'Anônimo',
@@ -259,9 +250,7 @@ export default function Configuracoes({
       await fetch(URL_WEBHOOK_AVALIACOES, {
         method: 'POST',
         mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosAvaliacao)
       });
 
@@ -286,6 +275,41 @@ export default function Configuracoes({
     } finally {
       setEnviandoAvaliacao(false);
       setTimeout(() => setSucesso(''), 4000);
+    }
+  };
+
+  const handleExcluirAvaliacao = async () => {
+    if (!window.confirm('Tem certeza de que deseja excluir sua avaliação do sistema e da pasta do Google Drive?')) {
+      return;
+    }
+
+    setErro('');
+    try {
+      // 1. Remove do localStorage e limpa estado da tela
+      setAvaliacaoSalva(null);
+      setEstrelas(0);
+      setComentarioAvaliacao('');
+      setEditandoAvaliacao(false);
+      try {
+        localStorage.removeItem(`avaliacao_${perfilUsuario?.email || 'anon'}`);
+      } catch {}
+
+      // 2. Notifica o Webhook para apagar o arquivo .txt da pasta do Google Drive
+      await fetch(URL_WEBHOOK_AVALIACOES, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'DELETAR_AVALIACAO',
+          usuario: perfilUsuario?.email || 'Anônimo'
+        })
+      });
+
+      setSucesso('Avaliação excluída com sucesso da aplicação e da pasta do Google Drive!');
+      setTimeout(() => setSucesso(''), 4000);
+    } catch (err) {
+      console.error('Erro ao excluir avaliação:', err);
+      setErro('Erro ao excluir avaliação. Tente novamente.');
     }
   };
 
@@ -447,6 +471,7 @@ export default function Configuracoes({
                 <p className="text-xs text-gray-700 dark:text-gray-300 italic bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800">"{avaliacaoSalva.comentario}"</p>
                 <div className="flex justify-end gap-2 pt-2">
                   <button type="button" onClick={() => { setEstrelas(avaliacaoSalva.estrelas); setComentarioAvaliacao(avaliacaoSalva.comentario); setEditandoAvaliacao(true); }} className={btn('suave', 'sm')}>✏️ Editar</button>
+                  <button type="button" onClick={handleExcluirAvaliacao} className={btn('suaveVermelho', 'sm')}>🗑️ Excluir</button>
                 </div>
               </div>
             ) : (
@@ -463,7 +488,12 @@ export default function Configuracoes({
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Comentário</label>
                   <textarea rows={4} maxLength={600} value={comentarioAvaliacao} onChange={(e) => setComentarioAvaliacao(e.target.value)} placeholder="Escreva sua opinião..." className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" required />
                 </div>
-                <button type="submit" disabled={enviandoAvaliacao} className={`${btn('primario')} disabled:opacity-50`}>{enviandoAvaliacao ? 'Enviando...' : 'Enviar Avaliação'}</button>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={enviandoAvaliacao} className={`${btn('primario')} disabled:opacity-50`}>{enviandoAvaliacao ? 'Enviando...' : 'Enviar Avaliação'}</button>
+                  {editandoAvaliacao && (
+                    <button type="button" onClick={() => setEditandoAvaliacao(false)} className={btn('neutro')}>Cancelar</button>
+                  )}
+                </div>
               </form>
             )}
           </div>
