@@ -7,7 +7,18 @@ import Ajuda from './pages/Ajuda';
 import Configuracoes from './pages/Configuracoes';
 import AssistenteIA from './components/AssistenteIA';
 import Auth, { abriuPorLinkDeRecuperacao } from './components/Auth';
-import { supabase, buscarProdutos, buscarHistorico, criarProduto, reporEstoque, registrarVenda, deletarProduto } from './services/api';
+import { 
+  supabase, 
+  buscarProdutos, 
+  buscarHistorico, 
+  criarProduto, 
+  atualizarProduto,
+  reporEstoque, 
+  registrarVenda, 
+  deletarProduto, 
+  buscarCategorias, 
+  criarCategoria 
+} from './services/api';
 
 function temaInicialEscuro() {
   try {
@@ -24,9 +35,7 @@ export default function App() {
   const [sessao, setSessao] = useState(null);
   const [verificandoSessao, setVerificandoSessao] = useState(true);
 
-  // true enquanto o usuário veio do link "Redefinir senha" do e-mail e ainda não definiu a nova senha
   const [recuperandoSenha, setRecuperandoSenha] = useState(abriuPorLinkDeRecuperacao);
-
   const [darkMode, setDarkMode] = useState(temaInicialEscuro);
 
   const [recursosAtivos, setRecursosAtivos] = useState(() => {
@@ -47,53 +56,9 @@ export default function App() {
     }
   });
 
-  const handleAtualizarRecursos = (novosRecursos) => {
-    setRecursosAtivos(novosRecursos);
-    try {
-      localStorage.setItem('recursosAtivos', JSON.stringify(novosRecursos));
-    } catch {}
-  };
-
-  const handleAtualizarResidencia = (novaResidencia) => {
-    if (novaResidencia.limiteEstoqueBaixo !== undefined) {
-      setLimiteEstoqueBaixo(novaResidencia.limiteEstoqueBaixo);
-      try {
-        localStorage.setItem('limiteEstoqueBaixo', novaResidencia.limiteEstoqueBaixo);
-      } catch {}
-    }
-  };
-
-  const handleAtualizarPerfil = (novosDadosPerfil) => {
-    if (sessao && sessao.user) {
-      setSessao({
-        ...sessao,
-        user: {
-          ...sessao.user,
-          user_metadata: {
-            ...sessao.user.user_metadata,
-            ...novosDadosPerfil
-          }
-        }
-      });
-    }
-  };
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (darkMode) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    try {
-      localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-    } catch (e) {}
-  }, [darkMode]);
-
-  const alternarTema = () => setDarkMode((atual) => !atual);
-
   const [produtos, setProdutos] = useState([]);
   const [historico, setHistorico] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -124,12 +89,14 @@ export default function App() {
       }
       try {
         setCarregando(true);
-        const [dadosProdutos, dadosHistorico] = await Promise.all([
+        const [dadosProdutos, dadosHistorico, dadosCategorias] = await Promise.all([
           buscarProdutos(),
-          buscarHistorico()
+          buscarHistorico(),
+          buscarCategorias()
         ]);
         setProdutos(dadosProdutos || []);
         setHistorico(dadosHistorico || []);
+        setCategorias(dadosCategorias || []);
       } catch (erro) {
         console.error('Erro ao carregar dados globais:', erro);
       } finally {
@@ -139,20 +106,76 @@ export default function App() {
     carregarDadosGlobais();
   }, [sessao, recuperandoSenha]);
 
+  const handleAtualizarRecursos = (novosRecursos) => {
+    setRecursosAtivos(novosRecursos);
+    try { localStorage.setItem('recursosAtivos', JSON.stringify(novosRecursos)); } catch {}
+  };
+
+  const handleAtualizarResidencia = (novaResidencia) => {
+    if (novaResidencia.limiteEstoqueBaixo !== undefined) {
+      setLimiteEstoqueBaixo(novaResidencia.limiteEstoqueBaixo);
+      try { localStorage.setItem('limiteEstoqueBaixo', novaResidencia.limiteEstoqueBaixo); } catch {}
+    }
+  };
+
+  const handleAtualizarPerfil = (novosDadosPerfil) => {
+    if (sessao && sessao.user) {
+      setSessao({
+        ...sessao,
+        user: { ...sessao.user, user_metadata: { ...sessao.user.user_metadata, ...novosDadosPerfil } }
+      });
+    }
+  };
+
+  const handleAtualizarConfiguracoesSistema = (novasConfig) => {
+    if (novasConfig.limiteEstoqueBaixo !== undefined) {
+      setLimiteEstoqueBaixo(novasConfig.limiteEstoqueBaixo);
+    }
+    if (novasConfig.exibirIA !== undefined || novasConfig.exibirModoEscuro !== undefined || novasConfig.exibirSairConta !== undefined) {
+      const atualizados = {
+        exibirIA: novasConfig.exibirIA ?? recursosAtivos.exibirIA,
+        exibirModoEscuro: novasConfig.exibirModoEscuro ?? recursosAtivos.exibirModoEscuro,
+        exibirSairConta: novasConfig.exibirSairConta ?? recursosAtivos.exibirSairConta
+      };
+      setRecursosAtivos(atualizados);
+      try { localStorage.setItem('recursosAtivos', JSON.stringify(atualizados)); } catch {}
+    }
+  };
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (darkMode) root.classList.add('dark');
+    else root.classList.remove('dark');
+    try { localStorage.setItem('theme', darkMode ? 'dark' : 'light'); } catch (e) {}
+  }, [darkMode]);
+
+  const alternarTema = () => setDarkMode(atual => !atual);
+
+  // Handlers operacionais
   const handleCriarProduto = async (novoProduto) => {
     const resultado = await criarProduto(novoProduto);
     if (resultado && !resultado.erro) {
-      setProdutos([...produtos, resultado]);
+      setProdutos(prev => [...prev, resultado]);
       const novoHistorico = await buscarHistorico();
       setHistorico(novoHistorico || []);
     }
     return resultado;
   };
 
+  const handleEditarProduto = async (id, dados) => {
+    const atualizado = await atualizarProduto(id, dados);
+    if (atualizado && !atualizado.erro) {
+      setProdutos(prev => prev.map(p => p.id === id ? atualizado : p));
+      const novoHistorico = await buscarHistorico();
+      setHistorico(novoHistorico || []);
+    }
+    return atualizado;
+  };
+
   const handleRepor = async (id, qtd, preco) => {
     const atualizado = await reporEstoque(id, qtd, preco);
     if (atualizado && !atualizado.erro) {
-      setProdutos(produtos.map(p => p.id === id ? atualizado : p));
+      setProdutos(prev => prev.map(p => p.id === id ? atualizado : p));
       const novoHistorico = await buscarHistorico();
       setHistorico(novoHistorico || []);
     }
@@ -162,7 +185,7 @@ export default function App() {
   const handleConsumo = async (id, qtd) => {
     const atualizado = await registrarVenda(id, qtd);
     if (atualizado && !atualizado.erro) {
-      setProdutos(produtos.map(p => p.id === id ? atualizado : p));
+      setProdutos(prev => prev.map(p => p.id === id ? atualizado : p));
       const novoHistorico = await buscarHistorico();
       setHistorico(novoHistorico || []);
     }
@@ -172,20 +195,29 @@ export default function App() {
   const handleExcluir = async (id) => {
     const resposta = await deletarProduto(id);
     if (resposta && !resposta.erro) {
-      setProdutos(produtos.filter(p => p.id !== id));
+      setProdutos(prev => prev.filter(p => p.id !== id));
+      const novoHistorico = await buscarHistorico();
+      setHistorico(novoHistorico || []);
     }
     return resposta;
   };
 
+  const handleCriarCategoria = async (nomeCat) => {
+    const res = await criarCategoria(nomeCat);
+    if (res && !res.erro) {
+      setCategorias(prev => [...prev, res].sort((a, b) => a.nome.localeCompare(b.nome)));
+    }
+    return res;
+  };
+
   if (verificandoSessao) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 font-medium">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 font-medium">
         Verificando acesso ao GestãoFácil...
       </div>
     );
   }
 
-  // Sem sessão OU abriu pelo link de recuperação (que cria uma sessão temporária): mostra o Auth
   if (!sessao || recuperandoSenha) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-900">
@@ -200,7 +232,7 @@ export default function App() {
 
   if (carregando) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 dark:text-gray-400 font-medium">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 text-gray-500 font-medium">
         Carregando dados do usuário...
       </div>
     );
@@ -211,9 +243,20 @@ export default function App() {
       ativo ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
     }`;
 
+  // Pacote de ações disponibilizado para o Assistente IA
+  const acoesAppParaIA = {
+    onCriarProduto: handleCriarProduto,
+    onEditarProduto: handleEditarProduto,
+    onReporEstoque: handleRepor,
+    onConsumirEstoque: handleConsumo,
+    onDeletarProduto: handleExcluir,
+    onCriarCategoria: handleCriarCategoria,
+    onNavegar: (tela) => setTelaAtiva(tela),
+    onAtualizarConfiguracoes: handleAtualizarConfiguracoesSistema
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 relative transition-colors duration-200">
-
       {!sidebarAberta && (
         <button
           onClick={() => setSidebarAberta(true)}
@@ -238,72 +281,49 @@ export default function App() {
                 <p className="text-xs text-slate-400">Despensa em Casa</p>
               </div>
             </div>
-
-            <button
-              onClick={() => setSidebarAberta(false)}
-              className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 transition"
-              title="Fechar Menu"
-            >
-              ◀
-            </button>
+            <button onClick={() => setSidebarAberta(false)} className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 transition">◀</button>
           </div>
 
           <nav className="space-y-2">
-            <button onClick={() => { setTelaAtiva('dashboard'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'dashboard')}>
-              <span>📊</span> Dashboard
-            </button>
-            <button onClick={() => { setTelaAtiva('produtos'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'produtos')}>
-              <span>🍎</span> Itens e Estoque
-            </button>
-            <button onClick={() => { setTelaAtiva('relatorios'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'relatorios')}>
-              <span>📈</span> Relatórios
-            </button>
-            <button onClick={() => { setTelaAtiva('historico'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'historico')}>
-              <span>🔔</span> Histórico Geral
-            </button>
-            <button onClick={() => { setTelaAtiva('ajuda'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'ajuda')}>
-              <span>❓</span> Ajuda
-            </button>
-            <button onClick={() => { setTelaAtiva('configuracoes'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'configuracoes')}>
-              <span>⚙️</span> Configurações
-            </button>
+            <button onClick={() => { setTelaAtiva('dashboard'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'dashboard')}><span>📊</span> Dashboard</button>
+            <button onClick={() => { setTelaAtiva('produtos'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'produtos')}><span>🍎</span> Itens e Estoque</button>
+            <button onClick={() => { setTelaAtiva('relatorios'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'relatorios')}><span>📈</span> Relatórios</button>
+            <button onClick={() => { setTelaAtiva('historico'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'historico')}><span>🔔</span> Histórico Geral</button>
+            <button onClick={() => { setTelaAtiva('ajuda'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'ajuda')}><span>❓</span> Ajuda</button>
+            <button onClick={() => { setTelaAtiva('configuracoes'); setSidebarAberta(false); }} className={classeBotaoMenu(telaAtiva === 'configuracoes')}><span>⚙️</span> Configurações</button>
           </nav>
         </div>
 
         <div className="space-y-2">
           {recursosAtivos.exibirModoEscuro && (
-            <button
-              onClick={alternarTema}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition"
-              title="Alternar modo escuro"
-            >
+            <button onClick={alternarTema} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 transition">
               {darkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
             </button>
           )}
-
           {recursosAtivos.exibirSairConta && (
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition"
-            >
+            <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white transition">
               🚪 Sair da Conta
             </button>
           )}
-
-          <div className="text-xs text-slate-500 text-center border-t border-slate-800 pt-3 mt-2">
-            Projeto Extensão - TSI
-          </div>
+          <div className="text-xs text-slate-500 text-center border-t border-slate-800 pt-3 mt-2">Projeto Extensão - TSI</div>
         </div>
       </aside>
 
-      {sidebarAberta && (
-        <div onClick={() => setSidebarAberta(false)} className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm" />
-      )}
+      {sidebarAberta && <div onClick={() => setSidebarAberta(false)} className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm" />}
 
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
         {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} perfilUsuario={sessao.user.user_metadata} />}
         {telaAtiva === 'produtos' && (
-          <Produtos produtos={produtos} onCriar={handleCriarProduto} onRepor={handleRepor} onConsumo={handleConsumo} onExcluir={handleExcluir} />
+          <Produtos 
+            produtos={produtos} 
+            categorias={categorias}
+            onCriar={handleCriarProduto} 
+            onEditar={handleEditarProduto}
+            onRepor={handleRepor} 
+            onConsumo={handleConsumo} 
+            onExcluir={handleExcluir} 
+            onCriarCategoria={handleCriarCategoria}
+          />
         )}
         {telaAtiva === 'relatorios' && <Relatorios produtos={produtos} limiteEstoqueBaixo={limiteEstoqueBaixo} />}
         {telaAtiva === 'historico' && <HistoricoGeral historicoInicial={historico} />}
@@ -321,8 +341,14 @@ export default function App() {
         )}
       </main>
 
-      {recursosAtivos.exibirIA && <AssistenteIA produtos={produtos} />}
-
+      {recursosAtivos.exibirIA && (
+        <AssistenteIA 
+          produtos={produtos} 
+          categorias={categorias}
+          historico={historico}
+          acoesApp={acoesAppParaIA}
+        />
+      )}
     </div>
   );
 }

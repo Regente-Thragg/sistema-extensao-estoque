@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-// Ícone animado de IA: três estrelas que "piscam" em sequência, uma ultrapassando a outra
 function EstrelasIA() {
   const caminho = 'M12 0C12.6 6.5 17.5 11.4 24 12C17.5 12.6 12.6 17.5 12 24C11.4 17.5 6.5 12.6 0 12C6.5 11.4 11.4 6.5 12 0Z';
   const estrelas = [
@@ -34,58 +33,123 @@ function EstrelasIA() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Configuração do Gemini
-// Os modelos mudam rápido (o 1.5 e o 2.5 já foram desativados). "gemini-flash-latest" é um
-// apelido que o Google mantém apontando para o Flash mais recente (hoje, o 3.8 Flash).
-// Para fixar outro modelo, crie VITE_GEMINI_MODEL no .env (e na Vercel) sem mexer no código.
-// ---------------------------------------------------------------------------
 const GEMINI_URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MODELO_PRINCIPAL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-flash-latest';
 const MODELOS_RESERVA = ['gemini-3.1-flash-lite'];
 
-// Tenta o modelo principal; se ele não existir (404), estiver sem cota (429) ou sobrecarregado (503),
-// tenta o próximo da lista. Qualquer outro erro (chave inválida, requisição ruim) é repassado direto.
-async function chamarGemini(apiKey, corpo) {
-  const modelos = [...new Set([MODELO_PRINCIPAL, ...MODELOS_RESERVA])];
-  let ultimoErro = null;
-
-  for (const modelo of modelos) {
-    const resposta = await fetch(`${GEMINI_URL_BASE}/${modelo}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify(corpo)
-    });
-    const dados = await resposta.json().catch(() => ({}));
-
-    if (resposta.ok && !dados.error) return dados;
-
-    ultimoErro = { status: resposta.status, mensagem: dados.error?.message || `Erro HTTP ${resposta.status}` };
-    if (![404, 429, 503].includes(resposta.status)) break;
+// Definição das ferramentas (Function Declarations) nativas do Gemini
+const declarations = [
+  {
+    name: "cadastrarProduto",
+    description: "Cadastra um novo produto na despensa.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        nome: { type: "STRING", description: "Nome do produto" },
+        categoria: { type: "STRING", description: "Categoria do produto (ex: Alimentos, Limpeza, Bebidas)" },
+        qtd: { type: "NUMBER", description: "Quantidade em unidades" },
+        preco: { type: "NUMBER", description: "Preço unitário em reais" },
+        validade: { type: "STRING", description: "Data de validade no formato YYYY-MM-DD (opcional)" }
+      },
+      required: ["nome", "categoria", "qtd", "preco"]
+    }
+  },
+  {
+    name: "reporEstoque",
+    description: "Repõe a quantidade de um produto existente no estoque.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        nomeOuId: { type: "STRING", description: "Nome ou ID do produto" },
+        qtd: { type: "NUMBER", description: "Quantidade a adicionar (padrão 1)" },
+        preco: { type: "NUMBER", description: "Novo preço unitário caso tenha mudado (opcional)" }
+      },
+      required: ["nomeOuId"]
+    }
+  },
+  {
+    name: "consumirEstoque",
+    description: "Registra consumo/baixa de unidades de um produto.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        nomeOuId: { type: "STRING", description: "Nome ou ID do produto" },
+        qtd: { type: "NUMBER", description: "Quantidade a consumir (padrão 1)" }
+      },
+      required: ["nomeOuId"]
+    }
+  },
+  {
+    name: "editarProduto",
+    description: "Edita os dados de um produto existente (nome, categoria, preço, validade).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        nomeOuId: { type: "STRING", description: "Nome atual ou ID do produto" },
+        novoNome: { type: "STRING", description: "Novo nome (opcional)" },
+        categoria: { type: "STRING", description: "Nova categoria (opcional)" },
+        preco: { type: "NUMBER", description: "Novo preço (opcional)" },
+        validade: { type: "STRING", description: "Nova validade YYYY-MM-DD (opcional)" }
+      },
+      required: ["nomeOuId"]
+    }
+  },
+  {
+    name: "solicitarExclusaoProduto",
+    description: "Inicia o processo de exclusão de um produto, exigindo confirmação do usuário.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        nomeOuId: { type: "STRING", description: "Nome ou ID do produto a excluir" }
+      },
+      required: ["nomeOuId"]
+    }
+  },
+  {
+    name: "criarCategoria",
+    description: "Cria uma nova categoria no sistema.",
+    parameters: {
+      type: "OBJECT",
+      properties: { nome: { type: "STRING", description: "Nome da nova categoria" } },
+      required: ["nome"]
+    }
+  },
+  {
+    name: "navegarTela",
+    description: "Navega para uma tela específica do aplicativo (dashboard, produtos, relatorios, historico, ajuda, configuracoes).",
+    parameters: {
+      type: "OBJECT",
+      properties: { tela: { type: "STRING", description: "Nome da tela: dashboard, produtos, relatorios, historico, ajuda, configuracoes" } },
+      required: ["tela"]
+    }
+  },
+  {
+    name: "atualizarConfiguracoesSistema",
+    description: "Atualiza preferências e configurações do sistema (modo escuro, limite de estoque baixo, exibição de recursos).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        limiteEstoqueBaixo: { type: "NUMBER", description: "Novo limite numérico para alerta de estoque baixo" },
+        nomeResidencia: { type: "STRING", description: "Novo nome da residência ou projeto" },
+        exibirIA: { type: "BOOLEAN", description: "Exibir ou ocultar o botão flutuante da IA" },
+        exibirModoEscuro: { type: "BOOLEAN", description: "Exibir ou ocultar botão de modo escuro" },
+        exibirSairConta: { type: "BOOLEAN", description: "Exibir ou ocultar botão de sair da conta" }
+      }
+    }
   }
+];
 
-  const erro = new Error(ultimoErro.mensagem);
-  erro.status = ultimoErro.status;
-  throw erro;
-}
-
-function mensagemAmigavel(erro) {
-  const s = erro.status;
-  if (!s && erro.name === 'TypeError') return 'Não foi possível se conectar à IA. Verifique sua internet e as restrições da chave de API.';
-  if (s === 400 && /api key/i.test(erro.message)) return 'A chave da API do Gemini é inválida. Confira a variável VITE_GEMINI_API_KEY.';
-  if (s === 401 || s === 403) return 'A chave da API não tem permissão para usar o Gemini. Verifique se a API está ativada e se as restrições da chave permitem este site.';
-  if (s === 404) return 'O modelo de IA configurado não está mais disponível. Atualize ou remova a variável VITE_GEMINI_MODEL.';
-  if (s === 429) return 'O limite de uso da IA foi atingido por agora. Aguarde um pouco e tente de novo.';
-  if (s === 503) return 'O serviço de IA está sobrecarregado no momento. Tente novamente em instantes.';
-  return `Erro ao conectar com o assistente: ${erro.message}`;
-}
-
-export default function AssistenteIA({ produtos }) {
+export default function AssistenteIA({ 
+  produtos, 
+  categorias, 
+  historico, 
+  acoesApp 
+}) {
   const [aberto, setAberto] = useState(false);
   const [mensagens, setMensagens] = useState([
     { 
       remetente: 'ia', 
-      texto: 'Olá! Sou seu assistente de IA do GestãoFácil. Posso te ajudar a gerenciar a despensa por texto, áudio ou analisando imagens. O que deseja fazer?' 
+      texto: 'Olá! Sou seu assistente inteligente do GestãoFácil. Posso gerenciar estoque, categorias, navegar entre telas, alterar configurações e tirar dúvidas. O que deseja fazer?' 
     }
   ]);
   
@@ -94,34 +158,32 @@ export default function AssistenteIA({ produtos }) {
   const [ouvindo, setOuvindo] = useState(false);
   const [arquivoAnexado, setArquivoAnexado] = useState(null);
 
+  // Histórico de conversa estruturado para a API do Gemini (suporta memória multi-turn)
+  const historicoGeminiRef = useRef([
+    {
+      role: 'user',
+      parts: [{ text: 'Sistema inicializado. Contexto pronto.' }]
+    },
+    {
+      role: 'model',
+      parts: [{ text: 'Entendido. Estou pronto para ajudar com o GestãoFácil.' }]
+    }
+  ]);
+
   const mensagensFimRef = useRef(null);
 
   useEffect(() => {
     mensagensFimRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensagens]);
 
-  const falarTexto = (texto) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(texto);
-      utterance.lang = 'pt-BR';
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
   const iniciarOuvido = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Seu navegador não suporta reconhecimento de voz. Tente usar o Google Chrome.');
+      alert('Seu navegador não suporta reconhecimento de voz.');
       return;
     }
-
     const recognition = new SpeechRecognition();
     recognition.lang = 'pt-BR';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
     recognition.onstart = () => setOuvindo(true);
     recognition.onresult = (event) => {
       setEntradaTexto(event.results[0][0].transcript);
@@ -129,7 +191,6 @@ export default function AssistenteIA({ produtos }) {
     };
     recognition.onerror = () => setOuvindo(false);
     recognition.onend = () => setOuvindo(false);
-
     recognition.start();
   };
 
@@ -138,23 +199,100 @@ export default function AssistenteIA({ produtos }) {
     if (arquivo) {
       const leitor = new FileReader();
       leitor.onloadend = () => {
-        setArquivoAnexado({
-          nome: arquivo.name,
-          tipo: arquivo.type,
-          dados: leitor.result
-        });
+        setArquivoAnexado({ nome: arquivo.name, tipo: arquivo.type, dados: leitor.result });
       };
       leitor.readAsDataURL(arquivo);
     }
   };
 
-  const enviarMensagem = async (e) => {
-    e.preventDefault();
-    if (!entradaTexto.trim() && !arquivoAnexado) return;
+  // Executa localmente as funções chamadas pela IA
+  const executarFuncaoLocal = async (nomeFuncao, args) => {
+    try {
+      if (nomeFuncao === 'cadastrarProduto') {
+        const res = await acoesApp.onCriarProduto({
+          nome: args.nome,
+          categoria: args.categoria || 'Alimentos',
+          qtd: Number(args.qtd) || 1,
+          preco: Number(args.preco) || 0,
+          validade: args.validade || null
+        });
+        if (res?.erro) return { status: 'erro', mensagem: res.erro };
+        return { status: 'sucesso', resultado: `Produto "${args.nome}" cadastrado com sucesso!` };
+      }
 
-    const textoAtual = entradaTexto;
+      if (nomeFuncao === 'reporEstoque') {
+        const p = produtos.find(item => item.id === args.nomeOuId || item.nome.toLowerCase().includes(args.nomeOuId.toLowerCase()));
+        if (!p) return { status: 'erro', mensagem: `Produto "${args.nomeOuId}" não encontrado no estoque.` };
+        const res = await acoesApp.onRepor(p.id, Number(args.qtd) || 1, args.preco !== undefined ? Number(args.preco) : null);
+        if (res?.erro) return { status: 'erro', mensagem: res.erro };
+        return { status: 'sucesso', resultado: `Estoque de "${p.nome}" reposto com sucesso!` };
+      }
+
+      if (nomeFuncao === 'consumirEstoque') {
+        const p = produtos.find(item => item.id === args.nomeOuId || item.nome.toLowerCase().includes(args.nomeOuId.toLowerCase()));
+        if (!p) return { status: 'erro', mensagem: `Produto "${args.nomeOuId}" não encontrado no estoque.` };
+        const res = await acoesApp.onConsumo(p.id, Number(args.qtd) || 1);
+        if (res?.erro) return { status: 'erro', mensagem: res.erro };
+        return { status: 'sucesso', resultado: `Consumo de "${p.nome}" registrado com sucesso!` };
+      }
+
+      if (nomeFuncao === 'editarProduto') {
+        const p = produtos.find(item => item.id === args.nomeOuId || item.nome.toLowerCase().includes(args.nomeOuId.toLowerCase()));
+        if (!p) return { status: 'erro', mensagem: `Produto "${args.nomeOuId}" não encontrado.` };
+        const dadosAtualizados = {
+          nome: args.novoNome || p.nome,
+          categoria: args.categoria || p.categoria,
+          preco: args.preco !== undefined ? Number(args.preco) : p.preco,
+          validade: args.validade || p.validade
+        };
+        const res = await acoesApp.onEditarProduto(p.id, dadosAtualizados);
+        if (res?.erro) return { status: 'erro', mensagem: res.erro };
+        return { status: 'sucesso', resultado: `Produto "${p.nome}" atualizado com sucesso!` };
+      }
+
+      if (nomeFuncao === 'solicitarExclusaoProduto') {
+        const p = produtos.find(item => item.id === args.nomeOuId || item.nome.toLowerCase().includes(args.nomeOuId.toLowerCase()));
+        if (!p) return { status: 'erro', mensagem: `Produto "${args.nomeOuId}" não encontrado.` };
+        
+        // Retorna solicitação pendente de confirmação via botão no chat
+        return { 
+          status: 'aguardando_confirmacao', 
+          produtoId: p.id, 
+          produtoNome: p.nome,
+          mensagem: `Deseja realmente excluir permanentemente o produto "${p.nome}"?` 
+        };
+      }
+
+      if (nomeFuncao === 'criarCategoria') {
+        const res = await acoesApp.onCriarCategoria(args.nome);
+        if (res?.erro) return { status: 'erro', mensagem: res.erro };
+        return { status: 'sucesso', resultado: `Categoria "${args.nome}" criada com sucesso!` };
+      }
+
+      if (nomeFuncao === 'navegarTela') {
+        acoesApp.onNavegar(args.tela);
+        return { status: 'sucesso', resultado: `Navegou para a tela de ${args.tela}.` };
+      }
+
+      if (nomeFuncao === 'atualizarConfiguracoesSistema') {
+        if (acoesApp.onAtualizarConfiguracoes) {
+          acoesApp.onAtualizarConfiguracoes(args);
+        }
+        return { status: 'sucesso', resultado: 'Configurações atualizadas com sucesso!' };
+      }
+
+      return { status: 'erro', mensagem: 'Função desconhecida.' };
+    } catch (err) {
+      return { status: 'erro', mensagem: err.message };
+    }
+  };
+
+  const enviarMensagem = async (e, textoCustomizado = null, acaoConfirmada = null) => {
+    if (e) e.preventDefault();
+    const textoAtual = textoCustomizado || entradaTexto;
+    if (!textoAtual.trim() && !arquivoAnexado && !acaoConfirmada) return;
+
     const anexoAtual = arquivoAnexado;
-
     const novasMensagens = [
       ...mensagens, 
       { remetente: 'usuario', texto: textoAtual, anexo: anexoAtual }
@@ -166,54 +304,130 @@ export default function AssistenteIA({ produtos }) {
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Chave da API do Gemini não configurada no .env");
 
-      if (!apiKey) {
-        throw new Error("Chave da API do Gemini não configurada no arquivo .env");
-      }
+      // Contexto atualizado do aplicativo em tempo real
+      const contextoAtual = {
+        produtos,
+        categorias,
+        historicoRecente: historico.slice(0, 10)
+      };
 
-      const contextoEstoque = JSON.stringify(produtos);
-      const promptSistema = `Você é o assistente inteligente do sistema "GestãoFácil", um aplicativo de controle de despensa residencial e estoque desenvolvido para a Atividade de Extensão universitária. Aqui está o estoque atual em formato JSON: ${contextoEstoque}. Responda de forma prestativa, educada e concisa em português do Brasil. Ajude o usuário a gerenciar itens, sugerir receitas com base nos produtos disponíveis ou tirar dúvidas.`;
+      const promptInstrucao = `Você é o assistente inteligente do sistema "GestãoFácil". 
+Estado atual do app: ${JSON.stringify(contextoAtual)}.
+Responda de forma prestativa, educada e concisa em português do Brasil. 
+Utilize as ferramentas (functions) disponíveis sempre que o usuário pedir para realizar alterações, cadastros, consultas, navegação ou ajustes. Nunca tente fazer login, logout ou excluir contas de usuário.`;
 
-      const partesConteudo = [
-        { text: promptSistema },
-        { text: `Usuário perguntou: ${textoAtual || "Analise esta imagem em relação ao estoque da despensa."}` }
-      ];
-
+      // Monta as partes da mensagem do usuário
+      const partesUsuario = [{ text: textoAtual || (acaoConfirmada ? "Executar ação confirmada." : "Analisar imagem.") }];
       if (anexoAtual) {
         const [cabecalho, dadosBase64] = anexoAtual.dados.split(',');
         const mimeType = cabecalho.match(/:(.*?);/)?.[1] || 'image/jpeg';
-
-        partesConteudo.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: dadosBase64
-          }
-        });
+        partesUsuario.push({ inline_data: { mime_type: mimeType, data: dadosBase64 } });
       }
 
-      const dados = await chamarGemini(apiKey, {
-        contents: [{ role: "user", parts: partesConteudo }]
-      });
+      // Adiciona ao histórico do Gemini
+      historicoGeminiRef.current.push({ role: 'user', parts: partesUsuario });
 
-      const textoResposta = (dados.candidates?.[0]?.content?.parts || [])
-        .map((parte) => parte.text)
-        .filter(Boolean)
-        .join('');
+      let modelos = [...new Set([MODELO_PRINCIPAL, ...MODELOS_RESERVA])];
+      let respostaApi = null;
+      let dados = null;
 
-      const respostaIA = textoResposta
-        || (dados.promptFeedback?.blockReason
-              ? "Não consegui responder a essa solicitação. Tente reformular a pergunta."
-              : "Desculpe, não consegui processar sua solicitação no momento.");
+      for (const modelo of modelos) {
+        respostaApi = await fetch(`${GEMINI_URL_BASE}/${modelo}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            contents: historicoGeminiRef.current,
+            system_instruction: { parts: [{ text: promptInstrucao }] },
+            tools: [{ function_declarations: declarations }]
+          })
+        });
+        dados = await respostaApi.json().catch(() => ({}));
+        if (respostaApi.ok && !dados.error) break;
+      }
 
-      setMensagens([...novasMensagens, { remetente: 'ia', texto: respostaIA }]);
-      falarTexto(respostaIA);
+      if (!respostaApi?.ok || dados.error) {
+        throw new Error(dados.error?.message || `Erro HTTP ${respostaApi?.status}`);
+      }
+
+      const candidato = dados.candidates?.[0];
+      const partesModelo = candidato?.content?.parts || [];
+
+      // Verifica se o Gemini chamou alguma função (Function Calling)
+      const chamadaFuncao = partesModelo.find(p => p.functionCall);
+
+      if (chamadaFuncao) {
+        const { name, args } = chamadaFuncao.functionCall;
+        
+        // Adiciona a intenção da IA no histórico
+        historicoGeminiRef.current.push({ role: 'model', parts: partesModelo });
+
+        // Executa a função localmente
+        const resultadoExecucao = await executarFuncaoLocal(name, args);
+
+        let respostaTextoFinal = "";
+        let botaoConfirmacaoExclusao = null;
+
+        if (resultadoExecucao.status === 'aguardando_confirmacao') {
+          respostaTextoFinal = resultadoExecucao.mensagem;
+          botaoConfirmacaoExclusao = {
+            produtoId: resultadoExecucao.produtoId,
+            produtoNome: resultadoExecucao.produtoNome
+          };
+        } else {
+          // Devolve o resultado da execução para a IA gerar a resposta final ao usuário
+          historicoGeminiRef.current.push({
+            role: 'function',
+            parts: [{
+              functionResponse: {
+                name: name,
+                response: resultadoExecucao
+              }
+            }]
+          });
+
+          // Segunda chamada para a IA formular a resposta final baseada no sucesso/erro
+          const respFinal = await fetch(`${GEMINI_URL_BASE}/${MODELO_PRINCIPAL}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify({
+              contents: historicoGeminiRef.current,
+              system_instruction: { parts: [{ text: promptInstrucao }] },
+              tools: [{ function_declarations: declarations }]
+            })
+          });
+          const dadosFinal = await respFinal.json();
+          const partesFinal = dadosFinal.candidates?.[0]?.content?.parts || [];
+          respostaTextoFinal = partesFinal.map(p => p.text).filter(Boolean).join('') || resultadoExecucao.resultado;
+          
+          historicoGeminiRef.current.push({ role: 'model', parts: partesFinal });
+        }
+
+        setMensagens(prev => [...prev, { remetente: 'ia', texto: respostaTextoFinal, confirmacaoExclusao: botaoConfirmacaoExclusao }]);
+      } else {
+        // Resposta normal em texto
+        const textoResposta = partesModelo.map(p => p.text).filter(Boolean).join('') || "Desculpe, não consegui processar.";
+        historicoGeminiRef.current.push({ role: 'model', parts: partesModelo });
+        setMensagens(prev => [...prev, { remetente: 'ia', texto: textoResposta }]);
+      }
 
     } catch (erro) {
-      console.error("Erro ao falar com a IA:", erro);
-      const msgErro = `Ops! ${mensagemAmigavel(erro)}`;
-      setMensagens([...novasMensagens, { remetente: 'ia', texto: msgErro }]);
+      console.error("Erro no Assistente IA:", erro);
+      setMensagens(prev => [...prev, { remetente: 'ia', texto: `Ops! Ocorreu um erro: ${erro.message}` }]);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const confirmarExclusaoChat = async (produtoId, produtoNome) => {
+    setCarregando(true);
+    const res = await acoesApp.onDeletarProduto(produtoId);
+    setCarregando(false);
+    if (res && !res.erro) {
+      setMensagens(prev => [...prev, { remetente: 'ia', texto: `✅ O produto "${produtoNome}" foi excluído permanentemente com sucesso!` }]);
+    } else {
+      setMensagens(prev => [...prev, { remetente: 'ia', texto: `❌ Erro ao excluir o produto "${produtoNome}".` }]);
     }
   };
 
@@ -233,13 +447,13 @@ export default function AssistenteIA({ produtos }) {
       )}
 
       {aberto && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-80 sm:w-96 flex flex-col h-[500px] transition-colors">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-80 sm:w-96 flex flex-col h-[520px] transition-colors">
           <div className="bg-indigo-600 text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xl">✨</span>
               <div>
                 <h3 className="font-bold text-sm">Assistente GestãoFácil</h3>
-                <p className="text-[10px] text-indigo-200">Pronto para te ajudar por voz, texto e imagem</p>
+                <p className="text-[10px] text-indigo-200">Comandos inteligentes, estoque e navegação</p>
               </div>
             </div>
             <button onClick={() => setAberto(false)} className="text-indigo-200 hover:text-white text-lg font-bold p-1">✕</button>
@@ -248,7 +462,7 @@ export default function AssistenteIA({ produtos }) {
           <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
             {mensagens.map((msg, idx) => (
               <div key={idx} className={`flex flex-col ${msg.remetente === 'usuario' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                <div className={`max-w-[90%] p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
                   msg.remetente === 'usuario' 
                     ? 'bg-indigo-600 text-white rounded-br-none' 
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-200 dark:border-slate-700'
@@ -259,6 +473,23 @@ export default function AssistenteIA({ produtos }) {
                     </div>
                   )}
                   <p>{msg.texto}</p>
+
+                  {msg.confirmacaoExclusao && (
+                    <div className="mt-3 flex gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <button 
+                        onClick={() => confirmarExclusaoChat(msg.confirmacaoExclusao.produtoId, msg.confirmacaoExclusao.produtoNome)}
+                        className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm transition"
+                      >
+                        Sim, Excluir
+                      </button>
+                      <button 
+                        onClick={() => setMensagens(prev => [...prev, { remetente: 'ia', texto: 'Operação de exclusão cancelada.' }])}
+                        className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl font-medium text-xs transition"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -277,7 +508,7 @@ export default function AssistenteIA({ produtos }) {
             </div>
           )}
 
-          <form onSubmit={enviarMensagem} className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-b-2xl flex items-center gap-2">
+          <form onSubmit={(e) => enviarMensagem(e)} className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-b-2xl flex items-center gap-2">
             <button
               type="button"
               onClick={iniciarOuvido}

@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração do Supabase Auth com fallbacks seguros para evitar erros de URL
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://baukinwjwktzcsmpvcka.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dm9fZ0459USH7rGlDzGE1w_8-apyI2l';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// URL do Backend na nuvem (Render)
 const API_URL = 'https://sistema-extensao-estoque.onrender.com/api';
 
 export async function buscarProdutos() {
@@ -30,6 +28,24 @@ export async function criarProduto(produto) {
   } catch (erro) {
     console.error('Erro ao cadastrar produto:', erro);
     return null;
+  }
+}
+
+export async function atualizarProduto(id, dados) {
+  try {
+    const resposta = await fetch(`${API_URL}/produtos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    });
+    if (!resposta.ok) {
+      const corpo = await resposta.json().catch(() => ({}));
+      return { erro: corpo?.erro || `Erro ao editar produto (HTTP ${resposta.status}).` };
+    }
+    return await resposta.json();
+  } catch (erro) {
+    console.error('Erro ao editar produto:', erro);
+    return { erro: 'Não foi possível se conectar ao servidor.' };
   }
 }
 
@@ -116,5 +132,16 @@ export async function criarCategoria(nome) {
   } catch (erro) {
     console.error('Erro ao cadastrar categoria:', erro);
     return null;
+  }
+}
+
+export async function salvarMetadadosUsuario(dados) {
+  try {
+    const { error } = await supabase.auth.updateUser({ data: dados });
+    if (error) return { erro: error.message };
+    return { ok: true };
+  } catch (erro) {
+    console.error('Erro ao salvar dados do usuário:', erro);
+    return { erro: 'Não foi possível salvar os dados do usuário.' };
   }
 }
