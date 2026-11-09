@@ -6,6 +6,7 @@ import HistoricoGeral from './pages/HistoricoGeral';
 import Ajuda from './pages/Ajuda';
 import Configuracoes from './pages/Configuracoes';
 import AssistenteIA from './components/AssistenteIA';
+import CentralComunicados from './components/CentralComunicados';
 import Auth, { abriuPorLinkDeRecuperacao } from './components/Auth';
 import { 
   supabase, 
@@ -31,7 +32,8 @@ function temaInicialEscuro() {
 export default function App() {
   const [telaAtiva, setTelaAtiva] = useState('dashboard');
   const [sidebarAberta, setSidebarAberta] = useState(false);
-  
+  const [centralComunicadosAberta, setCentralComunicadosAberta] = useState(false);
+
   const [sessao, setSessao] = useState(null);
   const [verificandoSessao, setVerificandoSessao] = useState(true);
 
@@ -243,7 +245,6 @@ export default function App() {
       ativo ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
     }`;
 
-  // Pacote de ações disponibilizado para o Assistente IA
   const acoesAppParaIA = {
     onCriarProduto: handleCriarProduto,
     onEditarProduto: handleEditarProduto,
@@ -267,6 +268,7 @@ export default function App() {
         </button>
       )}
 
+      {/* Navegação Lateral (Sidebar) */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col justify-between p-6 transition-transform duration-300 ease-in-out
         md:translate-x-0 md:sticky md:top-0 md:h-screen
@@ -311,8 +313,17 @@ export default function App() {
 
       {sidebarAberta && <div onClick={() => setSidebarAberta(false)} className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm" />}
 
+      {/* Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto w-full p-4 md:p-8">
-        {telaAtiva === 'dashboard' && <Dashboard produtos={produtos} historico={historico} perfilUsuario={sessao.user.user_metadata} />}
+        {telaAtiva === 'dashboard' && (
+          <Dashboard 
+            produtos={produtos} 
+            historico={historico} 
+            perfilUsuario={sessao.user.user_metadata} 
+            onAbrirCentralNotificacoes={() => setCentralComunicadosAberta(true)}
+          />
+        )}
+
         {telaAtiva === 'produtos' && (
           <Produtos 
             produtos={produtos} 
@@ -337,10 +348,12 @@ export default function App() {
             onAtualizarPerfil={handleAtualizarPerfil}
             alternarTema={alternarTema}
             darkMode={darkMode}
+            onAbrirCentralNotificacoes={() => setCentralComunicadosAberta(true)}
           />
         )}
       </main>
 
+      {/* Assistente Flutuante de IA */}
       {recursosAtivos.exibirIA && (
         <AssistenteIA 
           produtos={produtos} 
@@ -349,6 +362,13 @@ export default function App() {
           acoesApp={acoesAppParaIA}
         />
       )}
+
+      {/* Gaveta da Central de Comunicados do Sistema */}
+      <CentralComunicados
+        aberto={centralComunicadosAberta}
+        onFechar={() => setCentralComunicadosAberta(false)}
+        usuarioEmail={sessao?.user?.email}
+      />
     </div>
   );
 }

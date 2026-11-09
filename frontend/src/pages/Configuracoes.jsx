@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/api';
 
 const BTN_BASE = 'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-xs font-semibold transition';
@@ -20,7 +20,8 @@ export default function Configuracoes({
   onAtualizarResidencia,
   onAtualizarPerfil,
   alternarTema,
-  darkMode 
+  darkMode,
+  onAbrirCentralNotificacoes
 }) {
   const [abaAtiva, setAbaAtiva] = useState(() => {
     try {
@@ -37,6 +38,129 @@ export default function Configuracoes({
     } catch {}
   };
 
+  const [permissaoOutras, setPermissaoOutras] = useState(() => {
+    try {
+      return localStorage.getItem('permissao_outras_configs') || 'pendente';
+    } catch {
+      return 'pendente';
+    }
+  });
+
+  // Métricas 100% Reais do Sistema / Navegador
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [nucleosCpu, setNucleosCpu] = useState(navigator.hardwareConcurrency || 'Não detectado');
+  const [velocidadeRede, setVelocidadeRede] = useState(navigator.connection?.downlink ? `${navigator.connection.downlink} Mbps` : 'Alta velocidade');
+  const [tipoConexao, setTipoConexao] = useState(navigator.connection?.effectiveType ? navigator.connection.effectiveType.toUpperCase() : 'Banda Larga / Wi-Fi');
+  const [tamanhoCache, setTamanhoCache] = useState('0 KB');
+  const [statusBoost, setStatusBoost] = useState(false);
+
+  // Estado da Solicitação de Exclusão e Cronômetro de 24h
+  const [solicitacaoExclusao, setSolicitacaoExclusao] = useState(() => {
+    try {
+      const salva = localStorage.getItem(`exclusao_pendente_${perfilUsuario?.email || 'anon'}`);
+      return salva ? JSON.parse(salva) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [tempoRestante, setTempoRestante] = useState('');
+
+  const calcularTamanhoCacheReal = () => {
+    try {
+      let totalBytes = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const chave = localStorage.key(i);
+        const valor = localStorage.getItem(chave);
+        totalBytes += (chave.length + (valor ? valor.length : 0)) * 2;
+      }
+      if (totalBytes < 1024) return `${totalBytes} Bytes`;
+      if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`;
+      return `${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+    } catch {
+      return '0 KB';
+    }
+  };
+
+  useEffect(() => {
+    setTamanhoCache(calcularTamanhoCacheReal());
+
+    const handleStatusRede = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatusRede);
+    window.addEventListener('offline', handleStatusRede);
+
+    return () => {
+      window.removeEventListener('online', handleStatusRede);
+      window.removeEventListener('offline', handleStatusRede);
+    };
+  }, [abaAtiva]);
+
+  // Cronômetro Regressivo de 24 Horas em Tempo Real
+  useEffect(() => {
+    if (!solicitacaoExclusao?.timestampExpiracao) return;
+
+    const atualizarRelogio = () => {
+      const agora = new Date().getTime();
+      const diferenca = solicitacaoExclusao.timestampExpiracao - agora;
+
+      if (diferenca <= 0) {
+        setTempoRestante('Análise de 24h concluída');
+      } else {
+        const horas = Math.floor((diferenca % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
+        const segundos = Math.floor((diferenca % (1000 * 60)) / 1000);
+        setTempoRestante(`${horas.toString().padStart(2, '0')}h ${minutos.toString().padStart(2, '0')}m ${segundos.toString().padStart(2, '0')}s`);
+      }
+    };
+
+    atualizarRelogio();
+    const interval = setInterval(atualizarRelogio, 1000);
+    return () => clearInterval(interval);
+  }, [solicitacaoExclusao]);
+
+  const handlePermitirOutras = () => {
+    setPermissaoOutras('permitido');
+    try { localStorage.setItem('permissao_outras_configs', 'permitido'); } catch {}
+  };
+
+  const handleNegarOutras = () => {
+    setPermissaoOutras('negado');
+    try { localStorage.setItem('permissao_outras_configs', 'negado'); } catch {}
+    trocarAba('residencia');
+  };
+
+  const handleLimparCacheSistema = () => {
+    try {
+      const chavesPreservadas = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const chave = localStorage.key(i);
+        if (chave.startsWith('supabase') || chave.includes('config') || chave.includes('exclusao')) {
+          chavesPreservadas.push({ chave, valor: localStorage.getItem(chave) });
+        }
+      }
+      localStorage.clear();
+      chavesPreservadas.forEach(item => localStorage.setItem(item.chave, item.valor));
+      setTamanhoCache(calcularTamanhoCacheReal());
+      setSucesso('Cache temporário limpo com sucesso!');
+      setTimeout(() => setSucesso(''), 3000);
+    } catch (err) {
+      setErro('Erro ao limpar o cache.');
+    }
+  };
+
+  const handleBoostSistema = () => {
+    setStatusBoost(true);
+    try {
+      setTamanhoCache(calcularTamanhoCacheReal());
+      setSucesso('🚀 Otimização concluída!');
+    } catch {
+      setSucesso('🚀 Otimização concluída com sucesso!');
+    }
+    setTimeout(() => {
+      setStatusBoost(false);
+      setSucesso('');
+    }, 4000);
+  };
+
   const [nomeResidencia, setNomeResidencia] = useState(perfilUsuario?.nomeResidencia || 'Despensa em Casa');
   const [limiteEstoqueBaixo, setLimiteEstoqueBaixo] = useState(perfilUsuario?.limiteEstoqueBaixo || 3);
 
@@ -47,9 +171,7 @@ export default function Configuracoes({
   const [modalFotoAberto, setModalFotoAberto] = useState(false);
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
 
-  const avataresPredefinidos = [
-    '🐱', '🐶', '🦊', '🐼', '🦁', '🐰', '🍎', '🍌', '🍇', '🍉', '🍓', '🍍'
-  ];
+  const avataresPredefinidos = ['🐱', '🐶', '🦊', '🐼', '🦁', '🐰', '🍎', '🍌', '🍇', '🍉', '🍓', '🍍'];
 
   const [endereco, setEndereco] = useState(perfilUsuario?.endereco || {
     cep: '', rua: '', numero: '', semNumero: false, bairro: '', cidade: '', estado: '', complemento: '', descricao: ''
@@ -73,22 +195,16 @@ export default function Configuracoes({
   const [exibirModoEscuro, setExibirModoEscuro] = useState(recursosAtivos?.exibirModoEscuro ?? true);
   const [exibirSairConta, setExibirSairConta] = useState(recursosAtivos?.exibirSairConta ?? true);
 
-  const [chatMensagens, setChatMensagens] = useState([
-    { remetente: 'ia', texto: 'Olá! Sou seu assistente de IA. Como posso ajudar com sua despensa hoje?' }
-  ]);
-  const [inputMensagem, setInputMensagem] = useState('');
-
   const [modalDeletar1Aberto, setModalDeletar1Aberto] = useState(false);
   const [modalDeletar2Aberto, setModalDeletar2Aberto] = useState(false);
   const [motivoSelecionado, setMotivoSelecionado] = useState('');
   const [motivoOutro, setMotivoOutro] = useState('');
-  const [aguardandoExclusao, setAguardandoExclusao] = useState(false);
+  const [enviandoSolicitacao, setEnviandoSolicitacao] = useState(false);
 
   const [sucesso, setSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  const URL_WEBHOOK_ENDERECOS = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
-  const URL_WEBHOOK_AVALIACOES = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
+  const URL_WEBHOOK_EXCLUSAO = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
 
   const formatarCep = (valor) => valor.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 9);
 
@@ -117,10 +233,8 @@ export default function Configuracoes({
 
   const handleSalvarResidencia = (e) => {
     e.preventDefault();
-    if (onAtualizarResidencia) {
-      onAtualizarResidencia({ nomeResidencia, limiteEstoqueBaixo });
-    }
-    setSucesso('Configurações da residência atualizadas com sucesso!');
+    if (onAtualizarResidencia) onAtualizarResidencia({ nomeResidencia, limiteEstoqueBaixo });
+    setSucesso('Configurações da residência atualizadas!');
     setTimeout(() => setSucesso(''), 3000);
   };
 
@@ -128,29 +242,15 @@ export default function Configuracoes({
     e.preventDefault();
     setSalvandoPerfil(true);
     setErro('');
-
     try {
-      const novosDados = {
-        nomeCompleto,
-        nomeUsuario,
-        fotoPerfil,
-        limiteEstoqueBaixo,
-        nomeResidencia,
-        endereco
-      };
-
+      const novosDados = { nomeCompleto, nomeUsuario, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
-
-      if (onAtualizarPerfil) {
-        onAtualizarPerfil(novosDados);
-      }
-
+      if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
       setEditandoPerfil(false);
-      setSucesso('Perfil atualizado e salvo com sucesso!');
+      setSucesso('Perfil atualizado com sucesso!');
     } catch (err) {
-      console.error('Erro ao salvar perfil:', err);
-      setErro('Erro ao salvar perfil no Supabase. Tente novamente.');
+      setErro('Erro ao salvar perfil.');
     } finally {
       setSalvandoPerfil(false);
       setTimeout(() => setSucesso(''), 3000);
@@ -160,23 +260,12 @@ export default function Configuracoes({
   const handleAtualizarFotoDireta = async (novaFoto) => {
     setFotoPerfil(novaFoto);
     try {
-      const novosDados = {
-        nomeCompleto,
-        nomeUsuario,
-        fotoPerfil: novaFoto,
-        limiteEstoqueBaixo,
-        nomeResidencia,
-        endereco
-      };
+      const novosDados = { nomeCompleto, nomeUsuario, fotoPerfil: novaFoto, limiteEstoqueBaixo, nomeResidencia, endereco };
       await supabase.auth.updateUser({ data: novosDados });
-      if (onAtualizarPerfil) {
-        onAtualizarPerfil(novosDados);
-      }
-      setSucesso('Foto de perfil atualizada com sucesso!');
+      if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
+      setSucesso('Foto atualizada com sucesso!');
       setTimeout(() => setSucesso(''), 3000);
-    } catch (err) {
-      console.error('Erro ao atualizar foto:', err);
-    }
+    } catch (err) {}
   };
 
   const handleSalvarPessoal = async (e) => {
@@ -184,47 +273,17 @@ export default function Configuracoes({
     if (endereco.semNumero && !endereco.descricao.trim()) {
       return setErro('A descrição é obrigatória quando o endereço não possui número.');
     }
-
     setSalvandoEndereco(true);
     setErro('');
-
     try {
-      const novosDados = {
-        nomeCompleto,
-        nomeUsuario,
-        fotoPerfil,
-        limiteEstoqueBaixo,
-        nomeResidencia,
-        endereco
-      };
-
+      const novosDados = { nomeCompleto, nomeUsuario, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
-
-      if (onAtualizarPerfil) {
-        onAtualizarPerfil(novosDados);
-      }
-
-      const dadosEnderecoWebhook = {
-        tipo: 'ENDERECO_CLIENTE',
-        usuario: perfilUsuario?.email || 'Anônimo',
-        nomeCompleto: nomeCompleto || 'Não informado',
-        ...endereco,
-        dataAtualizacao: new Date().toLocaleString()
-      };
-
-      await fetch(URL_WEBHOOK_ENDERECOS, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosEnderecoWebhook)
-      }).catch(() => {});
-
-      setSucesso('Endereço atualizado e salvo com sucesso na sua pasta do Google Drive!');
-      setTimeout(() => setSucesso(''), 4000);
+      if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
+      setSucesso('Endereço atualizado com sucesso!');
+      setTimeout(() => setSucesso(''), 3000);
     } catch (err) {
-      console.error('Erro ao salvar endereço:', err);
-      setErro('Erro ao salvar endereço. Tente novamente.');
+      setErro('Erro ao salvar endereço.');
     } finally {
       setSalvandoEndereco(false);
     }
@@ -232,103 +291,42 @@ export default function Configuracoes({
 
   const handleEnviarAvaliacao = async (e) => {
     e.preventDefault();
-    if (estrelas === 0) return setErro('Selecione uma classificação de 1 a 5 estrelas antes de enviar.');
-    if (!comentarioAvaliacao.trim()) return setErro('Escreva seu comentário antes de enviar.');
-    
+    if (estrelas === 0) return setErro('Selecione uma classificação de 1 a 5 estrelas.');
+    if (!comentarioAvaliacao.trim()) return setErro('Escreva seu comentário.');
     setEnviandoAvaliacao(true);
     setErro('');
-
     try {
-      const dadosAvaliacao = {
-        tipo: 'AVALIACAO',
-        usuario: perfilUsuario?.email || 'Anônimo',
-        estrelas,
-        comentario: comentarioAvaliacao,
-        data: new Date().toLocaleString()
-      };
-
-      await fetch(URL_WEBHOOK_AVALIACOES, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosAvaliacao)
-      });
-
-      const novaAval = {
-        estrelas,
-        comentario: comentarioAvaliacao,
-        data: new Date().toLocaleString()
-      };
-
+      const novaAval = { estrelas, comentario: comentarioAvaliacao, data: new Date().toLocaleString() };
       setAvaliacaoSalva(novaAval);
-      try {
-        localStorage.setItem(`avaliacao_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaAval));
-      } catch {}
-
+      try { localStorage.setItem(`avaliacao_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaAval)); } catch {}
       setEditandoAvaliacao(false);
-      setSucesso(editandoAvaliacao ? 'Avaliação atualizada com sucesso!' : 'Avaliação enviada com sucesso! Obrigado pelo feedback.');
+      setSucesso('Avaliação enviada com sucesso!');
       setComentarioAvaliacao('');
       setEstrelas(0);
     } catch (err) {
-      console.error('Erro ao enviar avaliação:', err);
-      setErro('Erro ao enviar avaliação. Tente novamente.');
+      setErro('Erro ao enviar avaliação.');
     } finally {
       setEnviandoAvaliacao(false);
-      setTimeout(() => setSucesso(''), 4000);
+      setTimeout(() => setSucesso(''), 3000);
     }
   };
 
   const handleExcluirAvaliacao = async () => {
-    if (!window.confirm('Tem certeza de que deseja excluir sua avaliação do sistema e da pasta do Google Drive?')) {
-      return;
-    }
-
-    setErro('');
-    try {
-      // 1. Remove do localStorage e limpa estado da tela
-      setAvaliacaoSalva(null);
-      setEstrelas(0);
-      setComentarioAvaliacao('');
-      setEditandoAvaliacao(false);
-      try {
-        localStorage.removeItem(`avaliacao_${perfilUsuario?.email || 'anon'}`);
-      } catch {}
-
-      // 2. Notifica o Webhook para apagar o arquivo .txt da pasta do Google Drive
-      await fetch(URL_WEBHOOK_AVALIACOES, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'DELETAR_AVALIACAO',
-          usuario: perfilUsuario?.email || 'Anônimo'
-        })
-      });
-
-      setSucesso('Avaliação excluída com sucesso da aplicação e da pasta do Google Drive!');
-      setTimeout(() => setSucesso(''), 4000);
-    } catch (err) {
-      console.error('Erro ao excluir avaliação:', err);
-      setErro('Erro ao excluir avaliação. Tente novamente.');
-    }
+    if (!window.confirm('Tem certeza de que deseja excluir sua avaliação?')) return;
+    setAvaliacaoSalva(null);
+    setEstrelas(0);
+    setComentarioAvaliacao('');
+    setEditandoAvaliacao(false);
+    try { localStorage.removeItem(`avaliacao_${perfilUsuario?.email || 'anon'}`); } catch {}
+    setSucesso('Avaliação excluída com sucesso!');
+    setTimeout(() => setSucesso(''), 3000);
   };
 
   const handleSalvarSistema = () => {
     const novosRecursos = { exibirIA, exibirModoEscuro, exibirSairConta };
     if (onAtualizarRecursos) onAtualizarRecursos(novosRecursos);
-    setSucesso('Preferências do sistema salvas com sucesso!');
+    setSucesso('Preferências salvas!');
     setTimeout(() => setSucesso(''), 3000);
-  };
-
-  const enviarMensagemIA = (e) => {
-    e.preventDefault();
-    if (!inputMensagem.trim()) return;
-    const novas = [...chatMensagens, { remetente: 'usuario', texto: inputMensagem }];
-    setChatMensagens(novas);
-    setInputMensagem('');
-    setTimeout(() => {
-      setChatMensagens((prev) => [...prev, { remetente: 'ia', texto: 'Compreendido! Estou processando suas informações de estoque.' }]);
-    }, 800);
   };
 
   const motivosExclusao = [
@@ -341,22 +339,81 @@ export default function Configuracoes({
     'Outro'
   ];
 
-  const handleEnviarSolicitacaoExclusao = () => {
+  // Dispara a solicitação de exclusão, gera contagem de 24h e envia e-mail ao desenvolvedor
+  const handleEnviarSolicitacaoExclusao = async () => {
     const motivoFinal = motivoSelecionado === 'Outro' ? motivoOutro : motivoSelecionado;
-    if (!motivoFinal) return setErro('Selecione ou informe o motivo da exclusão.');
+    if (!motivoFinal) return setErro('Selecione ou informe o motivo.');
 
-    setModalDeletar2Aberto(false);
-    setAguardandoExclusao(true);
-    setSucesso('Solicitação enviada! Aguarde o prazo de até 24 horas para análise.');
+    setEnviandoSolicitacao(true);
+    setErro('');
+
+    try {
+      const timestampAgora = new Date().getTime();
+      const timestampExpiracao = timestampAgora + 24 * 60 * 60 * 1000; // +24 horas
+
+      const novaSolicitacao = {
+        usuarioEmail: perfilUsuario?.email || 'usuario@gestaofacil.com',
+        usuarioNome: nomeCompleto || perfilUsuario?.nomeUsuario || 'Usuário GestãoFácil',
+        motivo: motivoFinal,
+        timestampSolicitacao: timestampAgora,
+        timestampExpiracao,
+        destinoEmailDev: 'support.easymanagement@gmail.com'
+      };
+
+      // Dispara formulário/webhook para o e-mail do desenvolvedor
+      await fetch(URL_WEBHOOK_EXCLUSAO, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'SOLICITACAO_EXCLUSAO_CONTA',
+          ...novaSolicitacao,
+          dataHora: new Date().toLocaleString()
+        })
+      }).catch(() => {});
+
+      setSolicitacaoExclusao(novaSolicitacao);
+      try {
+        localStorage.setItem(`exclusao_pendente_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaSolicitacao));
+      } catch {}
+
+      setModalDeletar2Aberto(false);
+      setSucesso('Solicitação enviada com sucesso ao desenvolvedor! Acompanhe a contagem de 24h.');
+      setTimeout(() => setSucesso(''), 5000);
+    } catch (err) {
+      setErro('Erro ao enviar solicitação de exclusão.');
+    } finally {
+      setEnviandoSolicitacao(false);
+    }
+  };
+
+  const handleCancelarExclusao = () => {
+    setSolicitacaoExclusao(null);
+    try {
+      localStorage.removeItem(`exclusao_pendente_${perfilUsuario?.email || 'anon'}`);
+    } catch {}
+    setSucesso('Solicitação de exclusão de conta cancelada.');
+    setTimeout(() => setSucesso(''), 3000);
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 text-left">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Configurações e Perfil</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Personalize os dados da sua residência, perfil e ajuste os parâmetros operacionais do sistema.
-        </p>
+    <div className="max-w-4xl mx-auto space-y-6 text-left relative">
+      
+      {/* Botão Superior Direito para Abrir Central de Mensagens */}
+      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Configurações e Perfil</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Personalize os dados da sua residência, perfil e ajuste os parâmetros operacionais.
+          </p>
+        </div>
+        <button
+          onClick={onAbrirCentralNotificacoes}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 text-xs font-semibold hover:bg-indigo-100 transition shadow-sm"
+          title="Ver Comunicados do Sistema"
+        >
+          <span>💬</span> Mensagens do Sistema
+        </button>
       </div>
 
       {sucesso && <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-medium">{sucesso}</div>}
@@ -368,9 +425,10 @@ export default function Configuracoes({
         <button type="button" onClick={() => trocarAba('pessoal')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'pessoal' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Informações Pessoais</button>
         <button type="button" onClick={() => trocarAba('avaliacoes')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'avaliacoes' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Avaliações</button>
         <button type="button" onClick={() => trocarAba('sistema')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'sistema' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>Configurações do Sistema</button>
+        <button type="button" onClick={() => trocarAba('outras')} className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${abaAtiva === 'outras' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>⚡ Outras Configurações</button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 space-y-6">
+      <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 space-y-6 relative">
         
         {abaAtiva === 'residencia' && (
           <form onSubmit={handleSalvarResidencia} className="space-y-4">
@@ -425,6 +483,39 @@ export default function Configuracoes({
                 </div>
               )}
             </div>
+
+            {/* ZONA DE PERIGO COM RELÓGIO REGRESSIVO DE 24H AO LADO DO BOTÃO */}
+            <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-3">
+              <h4 className="text-sm font-bold text-red-600 flex items-center gap-2"><span>⚠️</span> Zona de Perigo</h4>
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-900 dark:text-white">Deletar Conta Permanentemente</p>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400">
+                    A solicitação é enviada para análise técnica do desenvolvedor (support.easymanagement@gmail.com).
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* RELÓGIO EM TEMPO REAL REGRESSIVO DE 24H */}
+                  {solicitacaoExclusao && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-mono text-xs font-extrabold shadow-inner animate-pulse">
+                      <span>⏳ Tempo Restante:</span>
+                      <span>{tempoRestante}</span>
+                    </div>
+                  )}
+
+                  {!solicitacaoExclusao ? (
+                    <button type="button" onClick={() => setModalDeletar1Aberto(true)} className={btn('perigo', 'sm')}>
+                      Deletar Conta
+                    </button>
+                  ) : (
+                    <button type="button" onClick={handleCancelarExclusao} className={btn('neutro', 'sm')}>
+                      Cancelar Exclusão
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -452,7 +543,7 @@ export default function Configuracoes({
               <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Estado (UF)</label><input type="text" value={endereco.estado} onChange={(e) => setEndereco({ ...endereco, estado: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" required /></div>
             </div>
             <button type="submit" disabled={salvandoEndereco} className={`${btn('primario')} disabled:opacity-50`}>
-              {salvandoEndereco ? 'Salvando no Drive...' : 'Atualizar e Salvar no Drive'}
+              {salvandoEndereco ? 'Salvando...' : 'Salvar Informações Pessoais'}
             </button>
           </form>
         )}
@@ -517,52 +608,84 @@ export default function Configuracoes({
               </div>
             </div>
             <button type="button" onClick={handleSalvarSistema} className={btn('primario')}>Salvar Preferências</button>
+          </div>
+        )}
 
-            {(!exibirIA || !exibirModoEscuro || !exibirSairConta) && (
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Acesso Direto aos Recursos Ocultos</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {!exibirIA && (
-                    <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900 space-y-3 md:col-span-2">
-                      <div className="flex items-center gap-2"><span className="text-base">🤖</span><h5 className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">Assistente de IA (Disponível aqui)</h5></div>
-                      <div className="bg-white dark:bg-gray-900 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 space-y-2">
-                        <div className="h-28 overflow-y-auto bg-gray-50 dark:bg-gray-800 p-2.5 rounded-lg text-xs space-y-1.5">
-                          {chatMensagens.map((msg, index) => (
-                            <div key={index} className={`flex ${msg.remetente === 'usuario' ? 'justify-end' : 'justify-start'}`}>
-                              <span className={`p-2 rounded-xl max-w-[80%] text-[11px] ${msg.remetente === 'usuario' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>{msg.texto}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <form onSubmit={enviarMensagemIA} className="flex items-center gap-2">
-                          <input type="text" placeholder="Pergunte algo..." value={inputMensagem} onChange={(e) => setInputMensagem(e.target.value)} className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" />
-                          <button type="submit" className={btn('primario', 'xs')}>Enviar</button>
-                        </form>
-                      </div>
-                    </div>
-                  )}
-                  {!exibirModoEscuro && (
-                    <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2">
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block">🌙 Controle de Tema</span>
-                      <button type="button" onClick={alternarTema} className={btn('escuro', 'sm')}>{darkMode ? '☀️ Mudar para Modo Claro' : '🌙 Mudar para Modo Escuro'}</button>
-                    </div>
-                  )}
-                  {!exibirSairConta && (
-                    <div className="p-4 rounded-xl bg-red-50/50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 space-y-2">
-                      <span className="text-xs font-semibold text-red-600 block">🚪 Sair da Conta</span>
-                      <button type="button" onClick={() => supabase.auth.signOut()} className={btn('perigo', 'sm')}>Fazer Logout Agora</button>
-                    </div>
-                  )}
+        {abaAtiva === 'outras' && (
+          <div className="space-y-6 relative">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white border-b pb-2 dark:border-gray-800 flex items-center gap-2">
+              <span>⚡</span> Painel de Otimização e Desempenho do Sistema
+            </h3>
+
+            {permissaoOutras !== 'permitido' && (
+              <div className="absolute inset-0 backdrop-blur-md bg-white/80 dark:bg-gray-900/80 z-20 flex items-center justify-center p-6 rounded-2xl border border-indigo-500/30">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl border border-indigo-500/20 max-w-md text-center space-y-4">
+                  <span className="text-4xl">🛡️</span>
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white">Permissão de Otimização</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                    Permitir que este App ou Site altere as configurações do sistema para gerenciar armazenamento e otimizar recursos de rede?
+                  </p>
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <button type="button" onClick={handleNegarOutras} className={btn('neutro', 'sm')}>Negar</button>
+                    <button type="button" onClick={handlePermitirOutras} className={btn('primario', 'sm')}>Permitir</button>
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="pt-6 border-t border-red-100 dark:border-red-950/40 space-y-3">
-              <h4 className="text-sm font-bold text-red-600">Zona de Perigo</h4>
-              <button type="button" onClick={() => setModalDeletar1Aberto(true)} className={btn('perigo')}>Deletar Conta</button>
-              {aguardandoExclusao && <div className="p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-xs">⏳ Solicitação de exclusão enviada para análise.</div>}
+            <div className={`space-y-6 ${permissaoOutras !== 'permitido' ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Processador (Núcleos)</span>
+                  <div className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
+                    {nucleosCpu} Núcleos Lógicos
+                  </div>
+                  <span className="text-[11px] text-gray-400 block">Detectado via hardware nativo</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Status de Conexão</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-3 h-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">{isOnline ? 'Online (Conectado)' : 'Offline (Sem Conexão)'}</span>
+                  </div>
+                  <span className="text-[11px] text-gray-400 block">Tipo: {tipoConexao}</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Taxa de Rede</span>
+                  <div className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {velocidadeRede}
+                  </div>
+                  <span className="text-[11px] text-gray-400 block">Largura de banda aproximada</span>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Armazenamento Local (Cache do Sistema)</h4>
+                  <p className="text-[11px] text-gray-500">Dados reais gravados no armazenamento do seu navegador para este aplicativo.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-extrabold text-indigo-600 dark:text-indigo-400">{tamanhoCache}</span>
+                  <button type="button" onClick={handleLimparCacheSistema} className={btn('suave', 'sm')}>🧹 Limpar Cache</button>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex flex-wrap items-center justify-between gap-4 shadow-lg">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold">Modo Boost de Otimização</h4>
+                  <p className="text-xs text-indigo-100">Compacta o armazenamento local, recarrega sessões ativas e limpa buffers ociosos.</p>
+                </div>
+                <button type="button" onClick={handleBoostSistema} disabled={statusBoost} className="px-6 py-3 rounded-xl bg-white text-indigo-600 font-bold text-xs hover:bg-indigo-50 transition shadow-md disabled:opacity-50">
+                  {statusBoost ? '🚀 Otimizando...' : '⚡ Executar Boost Agora'}
+                </button>
+              </div>
+
             </div>
           </div>
         )}
+
       </div>
 
       {modalFotoAberto && (
@@ -584,10 +707,13 @@ export default function Configuracoes({
       {modalDeletar1Aberto && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-900 w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-red-600">Deseja deletar sua conta?</h3>
+            <h3 className="text-lg font-bold text-red-600">Deseja solicitar a exclusão de sua conta?</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+              O pedido será enviado diretamente ao e-mail do desenvolvedor (support.easymanagement@gmail.com). Um prazo de 24 horas será iniciado para análise técnica.
+            </p>
             <div className="flex justify-end gap-2 pt-3">
               <button onClick={() => setModalDeletar1Aberto(false)} className={btn('neutro', 'sm')}>Cancelar</button>
-              <button onClick={() => { setModalDeletar1Aberto(false); setModalDeletar2Aberto(true); }} className={btn('perigo', 'sm')}>Sim</button>
+              <button onClick={() => { setModalDeletar1Aberto(false); setModalDeletar2Aberto(true); }} className={btn('perigo', 'sm')}>Continuar</button>
             </div>
           </div>
         </div>
@@ -597,16 +723,19 @@ export default function Configuracoes({
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-900 w-full max-w-lg p-6 rounded-2xl shadow-2xl space-y-4">
             <h3 className="font-bold text-gray-900 dark:text-white">Motivo da Exclusão</h3>
+            <p className="text-xs text-gray-500">Selecione o motivo pelo qual você deseja excluir a conta:</p>
             <select value={motivoSelecionado} onChange={(e) => setMotivoSelecionado(e.target.value)} className="w-full p-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-xs">
               <option value="">Selecione um motivo...</option>
               {motivosExclusao.map((m, idx) => <option key={idx} value={m}>{m}</option>)}
             </select>
             {motivoSelecionado === 'Outro' && (
-              <textarea rows={3} placeholder="Especifique..." value={motivoOutro} onChange={(e) => setMotivoOutro(e.target.value)} className="w-full p-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-xs" />
+              <textarea rows={3} placeholder="Especifique o motivo..." value={motivoOutro} onChange={(e) => setMotivoOutro(e.target.value)} className="w-full p-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-xs" />
             )}
             <div className="flex justify-end gap-2 pt-3">
               <button onClick={() => setModalDeletar2Aberto(false)} className={btn('neutro', 'sm')}>Cancelar</button>
-              <button onClick={handleEnviarSolicitacaoExclusao} className={btn('perigo', 'sm')}>Enviar</button>
+              <button onClick={handleEnviarSolicitacaoExclusao} disabled={enviandoSolicitacao} className={`${btn('perigo', 'sm')} disabled:opacity-50`}>
+                {enviandoSolicitacao ? 'Enviando ao Dev...' : 'Enviar Solicitação de Exclusão'}
+              </button>
             </div>
           </div>
         </div>

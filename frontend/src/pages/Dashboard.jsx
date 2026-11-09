@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { buscarProdutos, buscarHistorico } from '../services/api';
 
-export default function Dashboard({ perfilUsuario }) {
+export default function Dashboard({ perfilUsuario, onAbrirCentralNotificacoes }) {
   const [produtos, setProdutos] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -28,7 +28,6 @@ export default function Dashboard({ perfilUsuario }) {
   const totalNotificacoes = historico.length;
   const ultimasMovimentacoes = historico.slice(0, 5);
 
-  // Obtém o nome de usuário (ou nome completo como alternativa) e a foto de perfil cadastrada
   const nomeUsuarioExibicao = perfilUsuario?.nomeUsuario || perfilUsuario?.nomeCompleto || 'Usuário';
   const fotoPerfil = perfilUsuario?.fotoPerfil;
 
@@ -49,23 +48,37 @@ export default function Dashboard({ perfilUsuario }) {
           <p className="text-sm text-gray-500 dark:text-gray-400">Visão geral e indicadores do seu estoque doméstico inteligente.</p>
         </div>
         
-        {/* Bloco do canto superior direito exibindo o Nome de Usuário à esquerda e a Foto de Perfil à direita */}
-        <div className="flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-4 py-2 rounded-2xl shadow-sm">
-          <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
-            {nomeUsuarioExibicao}
-          </span>
-          <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-lg border-2 border-indigo-500 overflow-hidden shadow-inner shrink-0">
-            {fotoPerfil ? (
-              fotoPerfil.length <= 2 ? (
-                <span className="select-none">{fotoPerfil}</span>
+        {/* Bloco Superior Direito com Botão de Mensagens e Perfil */}
+        <div className="flex items-center gap-3">
+          {onAbrirCentralNotificacoes && (
+            <button
+              type="button"
+              onClick={onAbrirCentralNotificacoes}
+              className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 px-3.5 py-2.5 rounded-2xl text-indigo-600 dark:text-indigo-300 text-xs font-semibold hover:bg-indigo-100 transition shadow-sm"
+              title="Central de Mensagens do Sistema"
+            >
+              <span>💬</span>
+              <span className="hidden sm:inline">Mensagens</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-4 py-2 rounded-2xl shadow-sm">
+            <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
+              {nomeUsuarioExibicao}
+            </span>
+            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-lg border-2 border-indigo-500 overflow-hidden shadow-inner shrink-0">
+              {fotoPerfil ? (
+                fotoPerfil.length <= 2 ? (
+                  <span className="select-none">{fotoPerfil}</span>
+                ) : (
+                  <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
+                )
               ) : (
-                <img src={fotoPerfil} alt="Perfil" className="w-full h-full object-cover" />
-              )
-            ) : (
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                {nomeUsuarioExibicao.substring(0, 2).toUpperCase()}
-              </span>
-            )}
+                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  {nomeUsuarioExibicao.substring(0, 2).toUpperCase()}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
