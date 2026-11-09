@@ -204,7 +204,10 @@ export default function Configuracoes({
   const [sucesso, setSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  const URL_WEBHOOK_EXCLUSAO = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
+  // URLs Dedicadas dos Webhooks do Google Apps Script
+  const URL_WEBHOOK_ENDERECOS = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
+  const URL_WEBHOOK_AVALIACOES = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
+  const URL_WEBHOOK_EXCLUSAO = URL_WEBHOOK_ENDERECOS;
 
   const formatarCep = (valor) => valor.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 9);
 
@@ -280,7 +283,22 @@ export default function Configuracoes({
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
-      setSucesso('Endereço atualizado com sucesso!');
+
+      // Dispara webhook dedicado para salvar/atualizar o endereço no Google Drive
+      await fetch(URL_WEBHOOK_ENDERECOS, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'ENDERECO_CLIENTE',
+          usuario: perfilUsuario?.email || 'Anônimo',
+          nomeCompleto: nomeCompleto || 'Não informado',
+          ...endereco,
+          dataAtualizacao: new Date().toLocaleString()
+        })
+      }).catch(() => {});
+
+      setSucesso('Endereço atualizado com sucesso e salvo no Google Drive!');
       setTimeout(() => setSucesso(''), 3000);
     } catch (err) {
       setErro('Erro ao salvar endereço.');
@@ -299,6 +317,21 @@ export default function Configuracoes({
       const novaAval = { estrelas, comentario: comentarioAvaliacao, data: new Date().toLocaleString() };
       setAvaliacaoSalva(novaAval);
       try { localStorage.setItem(`avaliacao_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaAval)); } catch {}
+
+      // Dispara webhook dedicado para registrar a avaliação
+      await fetch(URL_WEBHOOK_AVALIACOES, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'AVALIACAO',
+          usuario: perfilUsuario?.email || 'Anônimo',
+          estrelas,
+          comentario: comentarioAvaliacao,
+          data: new Date().toLocaleString()
+        })
+      }).catch(() => {});
+
       setEditandoAvaliacao(false);
       setSucesso('Avaliação enviada com sucesso!');
       setComentarioAvaliacao('');
@@ -339,7 +372,7 @@ export default function Configuracoes({
     'Outro'
   ];
 
-  // Dispara a solicitação de exclusão, gera contagem de 24h e envia e-mail ao desenvolvedor
+  // Dispara a solicitação de exclusão, gera contagem de 24h, envia e-mail ao desenvolvedor e limpa dados do Drive
   const handleEnviarSolicitacaoExclusao = async () => {
     const motivoFinal = motivoSelecionado === 'Outro' ? motivoOutro : motivoSelecionado;
     if (!motivoFinal) return setErro('Selecione ou informe o motivo.');
@@ -360,7 +393,7 @@ export default function Configuracoes({
         destinoEmailDev: 'support.easymanagement@gmail.com'
       };
 
-      // Dispara formulário/webhook para o e-mail do desenvolvedor
+      // 1. Notifica o webhook de endereços/exclusão (dispara e-mail e remove registros vinculados)
       await fetch(URL_WEBHOOK_EXCLUSAO, {
         method: 'POST',
         mode: 'no-cors',
@@ -372,13 +405,25 @@ export default function Configuracoes({
         })
       }).catch(() => {});
 
+      // 2. Notifica o webhook de avaliações para remoção/limpeza dos dados de avaliação no Drive
+      await fetch(URL_WEBHOOK_AVALIACOES, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'EXCLUSAO_CONTA_DADOS',
+          usuarioEmail: perfilUsuario?.email || 'usuario@gestaofacil.com',
+          dataHora: new Date().toLocaleString()
+        })
+      }).catch(() => {});
+
       setSolicitacaoExclusao(novaSolicitacao);
       try {
         localStorage.setItem(`exclusao_pendente_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaSolicitacao));
       } catch {}
 
       setModalDeletar2Aberto(false);
-      setSucesso('Solicitação enviada com sucesso ao desenvolvedor! Acompanhe a contagem de 24h.');
+      setSucesso('Solicitação enviada com sucesso ao desenvolvedor! Dados vinculados no Drive serão apagados.');
       setTimeout(() => setSucesso(''), 5000);
     } catch (err) {
       setErro('Erro ao enviar solicitação de exclusão.');
