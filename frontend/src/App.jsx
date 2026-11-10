@@ -58,13 +58,40 @@ export default function App() {
     }
   });
 
+  // Estado para armazenar o nome da residência personalizado
+  const [nomeResidencia, setNomeResidencia] = useState(() => {
+    try {
+      const salvo = localStorage.getItem('nomeResidencia');
+      return salvo || 'Despensa em Casa';
+    } catch {
+      return 'Despensa em Casa';
+    }
+  });
+
   const [produtos, setProdutos] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        // Busca também os dados complementares da tabela 'perfis' (CPF, Nome Completo, etc)
+        const { data: perfilData } = await supabase
+          .from('perfis')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (perfilData) {
+          session.user.user_metadata = {
+            ...session.user.user_metadata,
+            nome_completo: perfilData.nome_completo,
+            nome_usuario: perfilData.nome_usuario,
+            cpf: perfilData.cpf
+          };
+        }
+      }
       setSessao(session);
       if (session?.user?.user_metadata?.limiteEstoqueBaixo) {
         setLimiteEstoqueBaixo(Number(session.user.user_metadata.limiteEstoqueBaixo));
@@ -72,8 +99,24 @@ export default function App() {
       setVerificandoSessao(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (_event === 'PASSWORD_RECOVERY') setRecuperandoSenha(true);
+      if (session?.user) {
+        const { data: perfilData } = await supabase
+          .from('perfis')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (perfilData) {
+          session.user.user_metadata = {
+            ...session.user.user_metadata,
+            nome_completo: perfilData.nome_completo,
+            nome_usuario: perfilData.nome_usuario,
+            cpf: perfilData.cpf
+          };
+        }
+      }
       setSessao(session);
       if (session?.user?.user_metadata?.limiteEstoqueBaixo) {
         setLimiteEstoqueBaixo(Number(session.user.user_metadata.limiteEstoqueBaixo));
@@ -114,6 +157,10 @@ export default function App() {
   };
 
   const handleAtualizarResidencia = (novaResidencia) => {
+    if (novaResidencia.nomeResidencia !== undefined) {
+      setNomeResidencia(novaResidencia.nomeResidencia);
+      try { localStorage.setItem('nomeResidencia', novaResidencia.nomeResidencia); } catch {}
+    }
     if (novaResidencia.limiteEstoqueBaixo !== undefined) {
       setLimiteEstoqueBaixo(novaResidencia.limiteEstoqueBaixo);
       try { localStorage.setItem('limiteEstoqueBaixo', novaResidencia.limiteEstoqueBaixo); } catch {}
@@ -280,7 +327,7 @@ export default function App() {
               <span className="text-2xl">📦</span>
               <div>
                 <h2 className="text-xl font-bold tracking-wide text-white">GestãoFácil</h2>
-                <p className="text-xs text-slate-400">Despensa em Casa</p>
+                <p className="text-xs text-slate-400">{nomeResidencia}</p>
               </div>
             </div>
             <button onClick={() => setSidebarAberta(false)} className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 transition">◀</button>
@@ -341,7 +388,7 @@ export default function App() {
         {telaAtiva === 'ajuda' && <Ajuda />}
         {telaAtiva === 'configuracoes' && (
           <Configuracoes 
-            perfilUsuario={{ ...sessao.user.user_metadata, limiteEstoqueBaixo }} 
+            perfilUsuario={{ ...sessao.user.user_metadata, limiteEstoqueBaixo, nomeResidencia }} 
             recursosAtivos={recursosAtivos} 
             onAtualizarRecursos={handleAtualizarRecursos}
             onAtualizarResidencia={handleAtualizarResidencia}

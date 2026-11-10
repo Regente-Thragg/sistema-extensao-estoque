@@ -232,6 +232,27 @@ export default function Auth({ onLoginSucesso, modoInicial = 'login', onSenhaAtu
           }
         });
         if (error) throw error;
+
+        // Inserir os dados na tabela pública 'perfis' recém-criada
+        const usuarioCriado = data.user || data.session?.user;
+        if (usuarioCriado) {
+          const { error: perfilError } = await supabase
+            .from('perfis')
+            .insert([
+              {
+                id: usuarioCriado.id,
+                email: email,
+                nome_completo: nomeCompleto,
+                nome_usuario: nomeUsuario,
+                cpf: cpf
+              }
+            ]);
+          
+          if (perfilError) {
+            console.error('Erro ao salvar dados na tabela perfis:', perfilError.message);
+          }
+        }
+
         setSucesso('Conta criada com sucesso! Faça login para continuar.');
         setModo('login');
       }

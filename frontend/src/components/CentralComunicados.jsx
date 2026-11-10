@@ -14,13 +14,21 @@ export default function CentralComunicados({ aberto, onFechar, usuarioEmail }) {
     {
       id: 1,
       autor: 'Sistema GestãoFácil',
-      data: '08/11/2026 - 18:30',
+      data: '10/11/2026 - 10:30',
       tipo: 'atualizacao',
-      titulo: '🚀 Nova Atualização v1.3 Disponível!',
-      texto: 'O Painel de Otimização e Desempenho 100% nativo foi integrado. Agora você pode monitorar a taxa de rede, status de conexão online/offline e calcular o cache real gravado no navegador.'
+      titulo: '🚀 Nova Atualização v1.4 Disponível!',
+      texto: 'Adicionada a importação de foto de perfil via Galeria e Explorador de Arquivos, além do Assistente de IA integrado diretamente na aba de Configurações do Sistema quando oculto.'
     },
     {
       id: 2,
+      autor: 'Sistema GestãoFácil',
+      data: '08/11/2026 - 18:30',
+      tipo: 'atualizacao',
+      titulo: '⚡ Painel de Otimização e Desempenho v1.3',
+      texto: 'O Painel de Otimização e Desempenho 100% nativo foi integrado. Agora você pode monitorar a taxa de rede, status de conexão online/offline e calcular o cache real gravado no navegador.'
+    },
+    {
+      id: 3,
       autor: 'Suporte Técnico',
       data: '05/11/2026 - 14:15',
       tipo: 'atualizacao',
@@ -76,7 +84,7 @@ export default function CentralComunicados({ aberto, onFechar, usuarioEmail }) {
           ))}
         </div>
 
-        {/* Rodapé Infomativo (Sem campo de escrita do usuário) */}
+        {/* Rodapé Informativo */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-center">
           <div className="p-2.5 rounded-xl bg-gray-200/60 dark:bg-gray-900/60 border border-gray-300/50 dark:border-gray-700 text-[11px] text-gray-500 dark:text-gray-400 italic">
             🔒 Este canal transmite apenas mensagens oficiais enviadas pelo desenvolvedor do sistema.

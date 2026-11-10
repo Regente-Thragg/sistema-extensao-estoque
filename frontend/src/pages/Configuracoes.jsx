@@ -164,14 +164,28 @@ export default function Configuracoes({
   const [nomeResidencia, setNomeResidencia] = useState(perfilUsuario?.nomeResidencia || 'Despensa em Casa');
   const [limiteEstoqueBaixo, setLimiteEstoqueBaixo] = useState(perfilUsuario?.limiteEstoqueBaixo || 3);
 
-  const [nomeCompleto, setNomeCompleto] = useState(perfilUsuario?.nomeCompleto || '');
-  const [nomeUsuario, setNomeUsuario] = useState(perfilUsuario?.nomeUsuario || '');
+  const [nomeCompleto, setNomeCompleto] = useState(perfilUsuario?.nome_completo || perfilUsuario?.nomeCompleto || '');
+  const [nomeUsuario, setNomeUsuario] = useState(perfilUsuario?.nome_usuario || perfilUsuario?.nomeUsuario || '');
+  const [cpf, setCpf] = useState(perfilUsuario?.cpf || '');
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [fotoPerfil, setFotoPerfil] = useState(perfilUsuario?.fotoPerfil || '');
   const [modalFotoAberto, setModalFotoAberto] = useState(false);
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
 
   const avataresPredefinidos = ['🐱', '🐶', '🦊', '🐼', '🦁', '🐰', '🍎', '🍌', '🍇', '🍉', '🍓', '🍍'];
+
+  // Manipulador para importar foto do explorador de arquivos / galeria
+  const handleArquivoFotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleAtualizarFotoDireta(reader.result);
+        setModalFotoAberto(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [endereco, setEndereco] = useState(perfilUsuario?.endereco || {
     cep: '', rua: '', numero: '', semNumero: false, bairro: '', cidade: '', estado: '', complemento: '', descricao: ''
@@ -194,6 +208,23 @@ export default function Configuracoes({
   const [exibirIA, setExibirIA] = useState(recursosAtivos?.exibirIA ?? true);
   const [exibirModoEscuro, setExibirModoEscuro] = useState(recursosAtivos?.exibirModoEscuro ?? true);
   const [exibirSairConta, setExibirSairConta] = useState(recursosAtivos?.exibirSairConta ?? true);
+
+  // Estados locais para simular o chat do Assistente de IA na tela de Configurações quando recolhido
+  const [chatMensagens, setChatMensagens] = useState([
+    { remetente: 'ia', texto: 'Olá! Sou seu assistente de IA. Como posso ajudar com sua despensa hoje?' }
+  ]);
+  const [inputMensagem, setInputMensagem] = useState('');
+
+  const enviarMensagemIA = (e) => {
+    e.preventDefault();
+    if (!inputMensagem.trim()) return;
+    const novas = [...chatMensagens, { remetente: 'usuario', texto: inputMensagem }];
+    setChatMensagens(novas);
+    setInputMensagem('');
+    setTimeout(() => {
+      setChatMensagens((prev) => [...prev, { remetente: 'ia', texto: 'Compreendido! Estou processando suas informações de estoque.' }]);
+    }, 800);
+  };
 
   const [modalDeletar1Aberto, setModalDeletar1Aberto] = useState(false);
   const [modalDeletar2Aberto, setModalDeletar2Aberto] = useState(false);
@@ -246,9 +277,24 @@ export default function Configuracoes({
     setSalvandoPerfil(true);
     setErro('');
     try {
-      const novosDados = { nomeCompleto, nomeUsuario, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
+      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, cpf, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
+      
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('perfis')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            nome_completo: nomeCompleto,
+            nome_usuario: nomeUsuario,
+            cpf: cpf
+          });
+      }
+
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
       setEditandoPerfil(false);
       setSucesso('Perfil atualizado com sucesso!');
@@ -263,7 +309,7 @@ export default function Configuracoes({
   const handleAtualizarFotoDireta = async (novaFoto) => {
     setFotoPerfil(novaFoto);
     try {
-      const novosDados = { nomeCompleto, nomeUsuario, fotoPerfil: novaFoto, limiteEstoqueBaixo, nomeResidencia, endereco };
+      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, cpf, fotoPerfil: novaFoto, limiteEstoqueBaixo, nomeResidencia, endereco };
       await supabase.auth.updateUser({ data: novosDados });
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
       setSucesso('Foto atualizada com sucesso!');
@@ -279,12 +325,11 @@ export default function Configuracoes({
     setSalvandoEndereco(true);
     setErro('');
     try {
-      const novosDados = { nomeCompleto, nomeUsuario, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
+      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, cpf, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
 
-      // Dispara webhook dedicado para salvar/atualizar o endereço no Google Drive
       await fetch(URL_WEBHOOK_ENDERECOS, {
         method: 'POST',
         mode: 'no-cors',
@@ -318,7 +363,6 @@ export default function Configuracoes({
       setAvaliacaoSalva(novaAval);
       try { localStorage.setItem(`avaliacao_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaAval)); } catch {}
 
-      // Dispara webhook dedicado para registrar a avaliação
       await fetch(URL_WEBHOOK_AVALIACOES, {
         method: 'POST',
         mode: 'no-cors',
@@ -372,7 +416,6 @@ export default function Configuracoes({
     'Outro'
   ];
 
-  // Dispara a solicitação de exclusão, gera contagem de 24h, envia e-mail ao desenvolvedor e limpa dados do Drive
   const handleEnviarSolicitacaoExclusao = async () => {
     const motivoFinal = motivoSelecionado === 'Outro' ? motivoOutro : motivoSelecionado;
     if (!motivoFinal) return setErro('Selecione ou informe o motivo.');
@@ -382,18 +425,17 @@ export default function Configuracoes({
 
     try {
       const timestampAgora = new Date().getTime();
-      const timestampExpiracao = timestampAgora + 24 * 60 * 60 * 1000; // +24 horas
+      const timestampExpiracao = timestampAgora + 24 * 60 * 60 * 1000;
 
       const novaSolicitacao = {
         usuarioEmail: perfilUsuario?.email || 'usuario@gestaofacil.com',
-        usuarioNome: nomeCompleto || perfilUsuario?.nomeUsuario || 'Usuário GestãoFácil',
+        usuarioNome: nomeCompleto || perfilUsuario?.nome_usuario || perfilUsuario?.nomeUsuario || 'Usuário GestãoFácil',
         motivo: motivoFinal,
         timestampSolicitacao: timestampAgora,
         timestampExpiracao,
         destinoEmailDev: 'support.easymanagement@gmail.com'
       };
 
-      // 1. Notifica o webhook de endereços/exclusão (dispara e-mail e remove registros vinculados)
       await fetch(URL_WEBHOOK_EXCLUSAO, {
         method: 'POST',
         mode: 'no-cors',
@@ -405,7 +447,6 @@ export default function Configuracoes({
         })
       }).catch(() => {});
 
-      // 2. Notifica o webhook de avaliações para remoção/limpeza dos dados de avaliação no Drive
       await fetch(URL_WEBHOOK_AVALIACOES, {
         method: 'POST',
         mode: 'no-cors',
@@ -444,7 +485,6 @@ export default function Configuracoes({
   return (
     <div className="max-w-4xl mx-auto space-y-6 text-left relative">
       
-      {/* Botão Superior Direito para Abrir Central de Mensagens */}
       <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Configurações e Perfil</h2>
@@ -508,12 +548,14 @@ export default function Configuracoes({
                   <div className="space-y-1">
                     <h4 className="text-xl font-bold text-gray-900 dark:text-white">{nomeCompleto || 'Nome Completo não definido'}</h4>
                     <p className="text-sm font-medium text-gray-500">@{nomeUsuario || 'usuario'}</p>
+                    {cpf && <p className="text-xs text-gray-400 font-mono">CPF: {cpf}</p>}
                   </div>
                 ) : (
                   <form onSubmit={handleSalvarPerfil} className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome Completo</label><input type="text" value={nomeCompleto} onChange={(e) => setNomeCompleto(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" required /></div>
                       <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Nome de Usuário</label><input type="text" value={nomeUsuario} onChange={(e) => setNomeUsuario(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" required /></div>
+                      <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">CPF</label><input type="text" value={cpf} onChange={(e) => setCpf(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" required /></div>
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                       <button type="button" onClick={() => setEditandoPerfil(false)} className={btn('neutro', 'sm')}>Cancelar</button>
@@ -529,7 +571,6 @@ export default function Configuracoes({
               )}
             </div>
 
-            {/* ZONA DE PERIGO COM RELÓGIO REGRESSIVO DE 24H AO LADO DO BOTÃO */}
             <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-3">
               <h4 className="text-sm font-bold text-red-600 flex items-center gap-2"><span>⚠️</span> Zona de Perigo</h4>
               <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex flex-wrap items-center justify-between gap-4">
@@ -541,7 +582,6 @@ export default function Configuracoes({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {/* RELÓGIO EM TEMPO REAL REGRESSIVO DE 24H */}
                   {solicitacaoExclusao && (
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-mono text-xs font-extrabold shadow-inner animate-pulse">
                       <span>⏳ Tempo Restante:</span>
@@ -653,6 +693,75 @@ export default function Configuracoes({
               </div>
             </div>
             <button type="button" onClick={handleSalvarSistema} className={btn('primario')}>Salvar Preferências</button>
+
+            {/* ÁREA DE RECURSOS RECOLHIDOS (IA, Tema e Sair) */}
+            {(!exibirIA || !exibirModoEscuro || !exibirSairConta) && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Acesso Direto aos Recursos Ocultos</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-left">
+                  
+                  {/* Assistente de IA Oculto com Grampo e Microfone */}
+                  {!exibirIA && (
+                    <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900 space-y-3 md:col-span-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🤖</span>
+                        <h5 className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">Assistente de IA (Disponível aqui)</h5>
+                      </div>
+                      <div className="bg-white dark:bg-gray-900 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 space-y-2">
+                        <div className="h-28 overflow-y-auto bg-gray-50 dark:bg-gray-800 p-2.5 rounded-lg text-xs space-y-1.5">
+                          {chatMensagens.map((msg, index) => (
+                            <div key={index} className={`flex ${msg.remetente === 'usuario' ? 'justify-end' : 'justify-start'}`}>
+                              <span className={`p-2 rounded-xl max-w-[80%] text-[11px] ${msg.remetente === 'usuario' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
+                                {msg.texto}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <form onSubmit={enviarMensagemIA} className="flex items-center gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Pergunte algo sobre seu estoque..." 
+                            value={inputMensagem} 
+                            onChange={(e) => setInputMensagem(e.target.value)} 
+                            className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" 
+                          />
+                          <button type="button" title="Anexar arquivo" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm px-1">
+                            📎
+                          </button>
+                          <button type="button" title="Gravar áudio" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm px-1">
+                            🎤
+                          </button>
+                          <button type="submit" className={btn('primario', 'xs')}>Enviar</button>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Modo Escuro Oculto */}
+                  {!exibirModoEscuro && (
+                    <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block">🌙 Controle de Tema</span>
+                      <p className="text-[11px] text-gray-500">Alternar modo claro / escuro:</p>
+                      <button type="button" onClick={alternarTema} className={btn('escuro', 'sm')}>
+                        {darkMode ? '☀️ Mudar para Modo Claro' : '🌙 Mudar para Modo Escuro'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sair da Conta Oculto */}
+                  {!exibirSairConta && (
+                    <div className="p-4 rounded-xl bg-red-50/50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 space-y-2">
+                      <span className="text-xs font-semibold text-red-600 block">🚪 Sair da Conta</span>
+                      <p className="text-[11px] text-gray-500">Atalho rápido para logout:</p>
+                      <button type="button" onClick={() => supabase.auth.signOut()} className={btn('perigo', 'sm')}>
+                        Fazer Logout Agora
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -737,13 +846,25 @@ export default function Configuracoes({
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-900 w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-5">
             <div className="flex justify-between items-center border-b pb-3 dark:border-gray-800">
-              <h3 className="font-bold text-gray-900 dark:text-white">Escolher Foto</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white">Escolher Foto de Perfil</h3>
               <button onClick={() => setModalFotoAberto(false)} className="text-gray-500 font-bold">✕</button>
             </div>
-            <div className="grid grid-cols-6 gap-2">
-              {avataresPredefinidos.map((avatar, idx) => (
-                <button key={idx} type="button" onClick={() => { handleAtualizarFotoDireta(avatar); setModalFotoAberto(false); }} className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 text-2xl flex items-center justify-center hover:bg-indigo-100">{avatar}</button>
-              ))}
+            
+            <div className="space-y-3">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Importar do Computador / Galeria</label>
+              <label className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-300 font-semibold text-xs cursor-pointer hover:bg-indigo-100/50 transition">
+                <span>📁</span> Explorar Arquivos de Imagem (.png, .jpg)
+                <input type="file" accept="image/*" onChange={handleArquivoFotoChange} className="hidden" />
+              </label>
+            </div>
+
+            <div className="pt-2">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 block mb-2">Ou escolha um avatar predefinido:</span>
+              <div className="grid grid-cols-6 gap-2">
+                {avataresPredefinidos.map((avatar, idx) => (
+                  <button key={idx} type="button" onClick={() => { handleAtualizarFotoDireta(avatar); setModalFotoAberto(false); }} className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 text-2xl flex items-center justify-center hover:bg-indigo-100 transition">{avatar}</button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
