@@ -116,9 +116,9 @@ export default function HistoricoGeral({ historicoInicial }) {
               </svg>
             </button>
 
-            {/* Caixa Dropdown com o aviso, toggle e botão */}
+            {/* Caixa Dropdown centralizada e responsiva para telas móveis */}
             {menuAberto && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg p-5 z-50 space-y-4">
+              <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-72 sm:w-80 max-w-[90vw] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg p-5 z-50 space-y-4">
                 <div className="space-y-2">
                   <h4 className="font-bold text-gray-800 dark:text-gray-100 text-sm">Gerenciamento do Histórico</h4>
                   <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 p-3 rounded-xl text-amber-900 dark:text-amber-200">

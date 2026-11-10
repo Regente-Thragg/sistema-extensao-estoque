@@ -76,7 +76,7 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        // Busca também os dados complementares da tabela 'perfis' (CPF, Nome Completo, etc)
+        // Busca também os dados complementares da tabela 'perfis' (CPF, Nome Completo, Nome de Usuário, etc)
         const { data: perfilData } = await supabase
           .from('perfis')
           .select('*')
@@ -86,9 +86,10 @@ export default function App() {
         if (perfilData) {
           session.user.user_metadata = {
             ...session.user.user_metadata,
-            nome_completo: perfilData.nome_completo,
-            nome_usuario: perfilData.nome_usuario,
-            cpf: perfilData.cpf
+            nome_completo: perfilData.nome_completo || session.user.user_metadata?.nome_completo,
+            nome_usuario: perfilData.nome_usuario || session.user.user_metadata?.nome_usuario,
+            nomeUsuario: perfilData.nome_usuario || session.user.user_metadata?.nomeUsuario,
+            cpf: perfilData.cpf || session.user.user_metadata?.cpf
           };
         }
       }
@@ -111,9 +112,10 @@ export default function App() {
         if (perfilData) {
           session.user.user_metadata = {
             ...session.user.user_metadata,
-            nome_completo: perfilData.nome_completo,
-            nome_usuario: perfilData.nome_usuario,
-            cpf: perfilData.cpf
+            nome_completo: perfilData.nome_completo || session.user.user_metadata?.nome_completo,
+            nome_usuario: perfilData.nome_usuario || session.user.user_metadata?.nome_usuario,
+            nomeUsuario: perfilData.nome_usuario || session.user.user_metadata?.nomeUsuario,
+            cpf: perfilData.cpf || session.user.user_metadata?.cpf
           };
         }
       }
@@ -171,7 +173,14 @@ export default function App() {
     if (sessao && sessao.user) {
       setSessao({
         ...sessao,
-        user: { ...sessao.user, user_metadata: { ...sessao.user.user_metadata, ...novosDadosPerfil } }
+        user: { 
+          ...sessao.user, 
+          user_metadata: { 
+            ...sessao.user.user_metadata, 
+            ...novosDadosPerfil,
+            nomeUsuario: novosDadosPerfil.nome_usuario || novosDadosPerfil.nomeUsuario || sessao.user.user_metadata?.nomeUsuario
+          } 
+        }
       });
     }
   };

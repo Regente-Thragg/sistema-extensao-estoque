@@ -164,8 +164,9 @@ export default function Configuracoes({
   const [nomeResidencia, setNomeResidencia] = useState(perfilUsuario?.nomeResidencia || 'Despensa em Casa');
   const [limiteEstoqueBaixo, setLimiteEstoqueBaixo] = useState(perfilUsuario?.limiteEstoqueBaixo || 3);
 
+  // Sincronização unificada dos campos de nome utilizando metadados consistentes (user_metadata / perfilUsuario)
   const [nomeCompleto, setNomeCompleto] = useState(perfilUsuario?.nome_completo || perfilUsuario?.nomeCompleto || '');
-  const [nomeUsuario, setNomeUsuario] = useState(perfilUsuario?.nome_usuario || perfilUsuario?.nomeUsuario || '');
+  const [nomeUsuario, setNomeUsuario] = useState(perfilUsuario?.nome_usuario || perfilUsuario?.nomeUsuario || perfilUsuario?.user_metadata?.nome_usuario || '');
   const [cpf, setCpf] = useState(perfilUsuario?.cpf || '');
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [fotoPerfil, setFotoPerfil] = useState(perfilUsuario?.fotoPerfil || '');
@@ -174,7 +175,6 @@ export default function Configuracoes({
 
   const avataresPredefinidos = ['🐱', '🐶', '🦊', '🐼', '🦁', '🐰', '🍎', '🍌', '🍇', '🍉', '🍓', '🍍'];
 
-  // Manipulador para importar foto do explorador de arquivos / galeria
   const handleArquivoFotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -209,7 +209,6 @@ export default function Configuracoes({
   const [exibirModoEscuro, setExibirModoEscuro] = useState(recursosAtivos?.exibirModoEscuro ?? true);
   const [exibirSairConta, setExibirSairConta] = useState(recursosAtivos?.exibirSairConta ?? true);
 
-  // Estados locais para simular o chat do Assistente de IA na tela de Configurações quando recolhido
   const [chatMensagens, setChatMensagens] = useState([
     { remetente: 'ia', texto: 'Olá! Sou seu assistente de IA. Como posso ajudar com sua despensa hoje?' }
   ]);
@@ -235,7 +234,6 @@ export default function Configuracoes({
   const [sucesso, setSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  // URLs Dedicadas dos Webhooks do Google Apps Script
   const URL_WEBHOOK_ENDERECOS = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
   const URL_WEBHOOK_AVALIACOES = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
   const URL_WEBHOOK_EXCLUSAO = URL_WEBHOOK_ENDERECOS;
@@ -277,7 +275,7 @@ export default function Configuracoes({
     setSalvandoPerfil(true);
     setErro('');
     try {
-      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, cpf, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
+      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, nomeUsuario, cpf, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
       
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
@@ -309,7 +307,7 @@ export default function Configuracoes({
   const handleAtualizarFotoDireta = async (novaFoto) => {
     setFotoPerfil(novaFoto);
     try {
-      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, cpf, fotoPerfil: novaFoto, limiteEstoqueBaixo, nomeResidencia, endereco };
+      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, nomeUsuario, cpf, fotoPerfil: novaFoto, limiteEstoqueBaixo, nomeResidencia, endereco };
       await supabase.auth.updateUser({ data: novosDados });
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
       setSucesso('Foto atualizada com sucesso!');
@@ -325,7 +323,7 @@ export default function Configuracoes({
     setSalvandoEndereco(true);
     setErro('');
     try {
-      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, cpf, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
+      const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, nomeUsuario, cpf, fotoPerfil, limiteEstoqueBaixo, nomeResidencia, endereco };
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);

@@ -28,7 +28,8 @@ export default function Dashboard({ perfilUsuario, onAbrirCentralNotificacoes })
   const totalNotificacoes = historico.length;
   const ultimasMovimentacoes = historico.slice(0, 5);
 
-  const nomeUsuarioExibicao = perfilUsuario?.nomeUsuario || perfilUsuario?.nomeCompleto || 'Usuário';
+  // Sincronização unificada dos campos de nome (suporta snake_case e camelCase)
+  const nomeUsuarioExibicao = perfilUsuario?.nome_usuario || perfilUsuario?.nomeUsuario || perfilUsuario?.nome_completo || perfilUsuario?.nomeCompleto || 'Usuário';
   const fotoPerfil = perfilUsuario?.fotoPerfil;
 
   if (carregando) {
