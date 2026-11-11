@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/api';
+import { 
+  supabase, 
+  buscarEndereco, 
+  salvarEndereco, 
+  buscarAvaliacao, 
+  salvarAvaliacao, 
+  deletarAvaliacao 
+} from '../services/api';
 
 const BTN_BASE = 'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-xs font-semibold transition';
 const BTN_TAM = { md: 'px-5 py-2.5', sm: 'px-4 py-2', xs: 'px-3 py-1.5' };
@@ -94,7 +101,46 @@ export default function Configuracoes({
     };
   }, [abaAtiva]);
 
-  // Cronômetro Regressivo de 24 Horas em Tempo Real
+  // Carregar Endereço e Avaliação diretamente do Supabase ao montar
+  const [endereco, setEndereco] = useState({
+    cep: '', rua: '', numero: '', semNumero: false, bairro: '', cidade: '', estado: '', complemento: '', descricao: ''
+  });
+  const [avaliacaoSalva, setAvaliacaoSalva] = useState(null);
+
+  useEffect(() => {
+    async function carregarDadosSupabase() {
+      try {
+        const endSupabase = await buscarEndereco();
+        if (endSupabase) {
+          setEndereco({
+            cep: endSupabase.cep || '',
+            rua: endSupabase.rua || '',
+            numero: endSupabase.numero || '',
+            semNumero: endSupabase.sem_numero ?? false,
+            bairro: endSupabase.bairro || '',
+            cidade: endSupabase.cidade || '',
+            estado: endSupabase.estado || '',
+            complemento: endSupabase.complemento || '',
+            descricao: endSupabase.descricao || ''
+          });
+        }
+
+        const avalSupabase = await buscarAvaliacao();
+        if (avalSupabase) {
+          setAvaliacaoSalva({
+            estrelas: avalSupabase.estrelas,
+            comentario: avalSupabase.comentario,
+            data: new Date(avalSupabase.criado_em).toLocaleString('pt-BR')
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados do Supabase:', err);
+      }
+    }
+    carregarDadosSupabase();
+  }, []);
+
+  // Cronômetro Regressivo de 24 Horas em Tempo Real com Expiração Automática
   useEffect(() => {
     if (!solicitacaoExclusao?.timestampExpiracao) return;
 
@@ -103,7 +149,11 @@ export default function Configuracoes({
       const diferenca = solicitacaoExclusao.timestampExpiracao - agora;
 
       if (diferenca <= 0) {
-        setTempoRestante('Análise de 24h concluída');
+        setSolicitacaoExclusao(null);
+        setTempoRestante('');
+        try {
+          localStorage.removeItem(`exclusao_pendente_${perfilUsuario?.email || 'anon'}`);
+        } catch {}
       } else {
         const horas = Math.floor((diferenca % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
@@ -115,7 +165,7 @@ export default function Configuracoes({
     atualizarRelogio();
     const interval = setInterval(atualizarRelogio, 1000);
     return () => clearInterval(interval);
-  }, [solicitacaoExclusao]);
+  }, [solicitacaoExclusao, perfilUsuario?.email]);
 
   const handlePermitirOutras = () => {
     setPermissaoOutras('permitido');
@@ -133,6 +183,7 @@ export default function Configuracoes({
       const chavesPreservadas = [];
       for (let i = 0; i < localStorage.length; i++) {
         const chave = localStorage.key(i);
+        const valor = localStorage.getItem(chave);
         if (chave.startsWith('supabase') || chave.includes('config') || chave.includes('exclusao')) {
           chavesPreservadas.push({ chave, valor: localStorage.getItem(chave) });
         }
@@ -187,23 +238,12 @@ export default function Configuracoes({
     }
   };
 
-  const [endereco, setEndereco] = useState(perfilUsuario?.endereco || {
-    cep: '', rua: '', numero: '', semNumero: false, bairro: '', cidade: '', estado: '', complemento: '', descricao: ''
-  });
   const [salvandoEndereco, setSalvandoEndereco] = useState(false);
 
   const [estrelas, setEstrelas] = useState(0);
   const [comentarioAvaliacao, setComentarioAvaliacao] = useState('');
   const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
   const [editandoAvaliacao, setEditandoAvaliacao] = useState(false);
-  const [avaliacaoSalva, setAvaliacaoSalva] = useState(() => {
-    try {
-      const salvo = localStorage.getItem(`avaliacao_${perfilUsuario?.email || 'anon'}`);
-      return salvo ? JSON.parse(salvo) : null;
-    } catch {
-      return null;
-    }
-  });
 
   const [exibirIA, setExibirIA] = useState(recursosAtivos?.exibirIA ?? true);
   const [exibirModoEscuro, setExibirModoEscuro] = useState(recursosAtivos?.exibirModoEscuro ?? true);
@@ -234,9 +274,7 @@ export default function Configuracoes({
   const [sucesso, setSucesso] = useState('');
   const [erro, setErro] = useState('');
 
-  const URL_WEBHOOK_ENDERECOS = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
-  const URL_WEBHOOK_AVALIACOES = "https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec";
-  const URL_WEBHOOK_EXCLUSAO = URL_WEBHOOK_ENDERECOS;
+  const URL_WEBHOOK_EXCLUSAO = "https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec";
 
   const formatarCep = (valor) => valor.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 9);
 
@@ -328,20 +366,11 @@ export default function Configuracoes({
       if (error) throw error;
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
 
-      await fetch(URL_WEBHOOK_ENDERECOS, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'ENDERECO_CLIENTE',
-          usuario: perfilUsuario?.email || 'Anônimo',
-          nomeCompleto: nomeCompleto || 'Não informado',
-          ...endereco,
-          dataAtualizacao: new Date().toLocaleString()
-        })
-      }).catch(() => {});
+      // Salvar no Supabase (tabela enderecos)
+      const resEnd = await salvarEndereco(endereco);
+      if (resEnd.erro) throw new Error(resEnd.erro);
 
-      setSucesso('Endereço atualizado com sucesso e salvo no Google Drive!');
+      setSucesso('Endereço atualizado com sucesso e salvo no Supabase!');
       setTimeout(() => setSucesso(''), 3000);
     } catch (err) {
       setErro('Erro ao salvar endereço.');
@@ -357,25 +386,18 @@ export default function Configuracoes({
     setEnviandoAvaliacao(true);
     setErro('');
     try {
-      const novaAval = { estrelas, comentario: comentarioAvaliacao, data: new Date().toLocaleString() };
-      setAvaliacaoSalva(novaAval);
-      try { localStorage.setItem(`avaliacao_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaAval)); } catch {}
+      const resAval = await salvarAvaliacao(estrelas, comentarioAvaliacao);
+      if (resAval.erro) throw new Error(resAval.erro);
 
-      await fetch(URL_WEBHOOK_AVALIACOES, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'AVALIACAO',
-          usuario: perfilUsuario?.email || 'Anônimo',
-          estrelas,
-          comentario: comentarioAvaliacao,
-          data: new Date().toLocaleString()
-        })
-      }).catch(() => {});
+      const novaAval = { 
+        estrelas, 
+        comentario: comentarioAvaliacao, 
+        data: new Date(resAval.dados?.criado_em || Date.now()).toLocaleString('pt-BR') 
+      };
+      setAvaliacaoSalva(novaAval);
 
       setEditandoAvaliacao(false);
-      setSucesso('Avaliação enviada com sucesso!');
+      setSucesso('Avaliação salva com sucesso no Supabase!');
       setComentarioAvaliacao('');
       setEstrelas(0);
     } catch (err) {
@@ -388,13 +410,20 @@ export default function Configuracoes({
 
   const handleExcluirAvaliacao = async () => {
     if (!window.confirm('Tem certeza de que deseja excluir sua avaliação?')) return;
-    setAvaliacaoSalva(null);
-    setEstrelas(0);
-    setComentarioAvaliacao('');
-    setEditandoAvaliacao(false);
-    try { localStorage.removeItem(`avaliacao_${perfilUsuario?.email || 'anon'}`); } catch {}
-    setSucesso('Avaliação excluída com sucesso!');
-    setTimeout(() => setSucesso(''), 3000);
+    try {
+      const res = await deletarAvaliacao();
+      if (res.erro) throw new Error(res.erro);
+
+      setAvaliacaoSalva(null);
+      setEstrelas(0);
+      setComentarioAvaliacao('');
+      setEditandoAvaliacao(false);
+      setSucesso('Avaliação excluída com sucesso!');
+      setTimeout(() => setSucesso(''), 3000);
+    } catch (err) {
+      setErro('Erro ao excluir avaliação.');
+      setTimeout(() => setErro(''), 3000);
+    }
   };
 
   const handleSalvarSistema = () => {
@@ -445,24 +474,13 @@ export default function Configuracoes({
         })
       }).catch(() => {});
 
-      await fetch(URL_WEBHOOK_AVALIACOES, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'EXCLUSAO_CONTA_DADOS',
-          usuarioEmail: perfilUsuario?.email || 'usuario@gestaofacil.com',
-          dataHora: new Date().toLocaleString()
-        })
-      }).catch(() => {});
-
       setSolicitacaoExclusao(novaSolicitacao);
       try {
         localStorage.setItem(`exclusao_pendente_${perfilUsuario?.email || 'anon'}`, JSON.stringify(novaSolicitacao));
       } catch {}
 
       setModalDeletar2Aberto(false);
-      setSucesso('Solicitação enviada com sucesso ao desenvolvedor! Dados vinculados no Drive serão apagados.');
+      setSucesso('Solicitação enviada com sucesso ao desenvolvedor! Dados vinculados serão apagados.');
       setTimeout(() => setSucesso(''), 5000);
     } catch (err) {
       setErro('Erro ao enviar solicitação de exclusão.');
@@ -604,7 +622,7 @@ export default function Configuracoes({
 
         {abaAtiva === 'pessoal' && (
           <form onSubmit={handleSalvarPessoal} className="space-y-4">
-            <h3 className="text-base font-bold text-gray-900 dark:text-white border-b pb-2 dark:border-gray-800">Endereço Cadastrado (Salvo no Google Drive)</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white border-b pb-2 dark:border-gray-800">Endereço Cadastrado (Salvo no Supabase)</h3>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">CEP</label><input type="text" value={endereco.cep} onChange={handleCepChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" required /></div>
               <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Rua</label><input type="text" value={endereco.rua} onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" required /></div>

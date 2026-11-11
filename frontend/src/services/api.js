@@ -12,7 +12,7 @@ export async function buscarProdutos() {
     const resposta = await fetch(`${API_URL}/produtos`);
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao buscar produtos:', erro);
+    console.error('Erro ao buscar produtos:', erro.message || erro);
     return [];
   }
 }
@@ -26,7 +26,7 @@ export async function criarProduto(produto) {
     });
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao cadastrar produto:', erro);
+    console.error('Erro ao cadastrar produto:', erro.message || erro);
     return null;
   }
 }
@@ -44,7 +44,7 @@ export async function atualizarProduto(id, dados) {
     }
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao editar produto:', erro);
+    console.error('Erro ao editar produto:', erro.message || erro);
     return { erro: 'Não foi possível se conectar ao servidor.' };
   }
 }
@@ -58,7 +58,7 @@ export async function reporEstoque(id, qtd = 1, preco = null) {
     });
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao repor estoque:', erro);
+    console.error('Erro ao repor estoque:', erro.message || erro);
     return null;
   }
 }
@@ -72,7 +72,7 @@ export async function registrarVenda(id, qtd = 1) {
     });
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao registrar consumo:', erro);
+    console.error('Erro ao registrar consumo:', erro.message || erro);
     return null;
   }
 }
@@ -84,7 +84,7 @@ export async function deletarProduto(id) {
     });
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao deletar produto:', erro);
+    console.error('Erro ao deletar produto:', erro.message || erro);
     return null;
   }
 }
@@ -94,7 +94,7 @@ export async function buscarHistorico() {
     const resposta = await fetch(`${API_URL}/historico`);
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao buscar histórico:', erro);
+    console.error('Erro ao buscar histórico:', erro.message || erro);
     return [];
   }
 }
@@ -106,7 +106,7 @@ export async function limparHistorico() {
     });
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao limpar histórico:', erro);
+    console.error('Erro ao limpar histórico:', erro.message || erro);
     return null;
   }
 }
@@ -116,7 +116,7 @@ export async function buscarCategorias() {
     const resposta = await fetch(`${API_URL}/categorias`);
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao buscar categorias:', erro);
+    console.error('Erro ao buscar categorias:', erro.message || erro);
     return [];
   }
 }
@@ -130,7 +130,7 @@ export async function criarCategoria(nome) {
     });
     return await resposta.json();
   } catch (erro) {
-    console.error('Erro ao cadastrar categoria:', erro);
+    console.error('Erro ao cadastrar categoria:', erro.message || erro);
     return null;
   }
 }
@@ -141,7 +141,131 @@ export async function salvarMetadadosUsuario(dados) {
     if (error) return { erro: error.message };
     return { ok: true };
   } catch (erro) {
-    console.error('Erro ao salvar dados do usuário:', erro);
+    console.error('Erro ao salvar dados do usuário:', erro.message || erro);
     return { erro: 'Não foi possível salvar os dados do usuário.' };
+  }
+}
+
+// ==========================================
+// FUNÇÕES SUPABASE: ENDEREÇOS E AVALIAÇÕES
+// ==========================================
+
+export async function buscarEndereco() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('enderecos')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  } catch (erro) {
+    console.error('Erro ao buscar endereço no Supabase:', erro.message || JSON.stringify(erro));
+    return null;
+  }
+}
+
+export async function salvarEndereco(dadosEndereco) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { erro: 'Usuário não autenticado' };
+
+    const payload = {
+      user_id: user.id,
+      cep: dadosEndereco.cep,
+      rua: dadosEndereco.rua,
+      numero: dadosEndereco.numero,
+      sem_numero: dadosEndereco.semNumero,
+      bairro: dadosEndereco.bairro,
+      cidade: dadosEndereco.cidade,
+      estado: dadosEndereco.estado,
+      complemento: dadosEndereco.complemento,
+      descricao: dadosEndereco.descricao,
+      atualizado_em: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('enderecos')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { dados: data };
+  } catch (erro) {
+    console.error('Erro ao salvar endereço no Supabase:', erro.message || JSON.stringify(erro));
+    return { erro: erro.message || 'Não foi possível salvar o endereço.' };
+  }
+}
+
+export async function buscarAvaliacao() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('avaliacoes')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  } catch (erro) {
+    console.error('Erro ao buscar avaliação no Supabase:', erro.message || JSON.stringify(erro));
+    return null;
+  }
+}
+
+export async function salvarAvaliacao(estrelas, comentario) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { erro: 'Usuário não autenticado' };
+
+    const existente = await buscarAvaliacao();
+    let res;
+
+    if (existente) {
+      res = await supabase
+        .from('avaliacoes')
+        .update({ estrelas, comentario, criado_em: new Date().toISOString() })
+        .eq('id', existente.id)
+        .select()
+        .single();
+    } else {
+      res = await supabase
+        .from('avaliacoes')
+        .insert({ user_id: user.id, estrelas, comentario })
+        .select()
+        .single();
+    }
+
+    if (res.error) throw res.error;
+    return { dados: res.data };
+  } catch (erro) {
+    console.error('Erro ao salvar avaliação no Supabase:', erro.message || JSON.stringify(erro));
+    return { erro: erro.message || 'Não foi possível salvar a avaliação.' };
+  }
+}
+
+export async function deletarAvaliacao() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { erro: 'Usuário não autenticado' };
+
+    const { error } = await supabase
+      .from('avaliacoes')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    return { ok: true };
+  } catch (erro) {
+    console.error('Erro ao excluir avaliação no Supabase:', erro.message || JSON.stringify(erro));
+    return { erro: erro.message || 'Não foi possível excluir a avaliação.' };
   }
 }
