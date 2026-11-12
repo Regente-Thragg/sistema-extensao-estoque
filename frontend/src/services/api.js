@@ -147,24 +147,16 @@ export async function salvarMetadadosUsuario(dados) {
 }
 
 // ==========================================
-// FUNÇÕES SUPABASE: ENDEREÇOS E AVALIAÇÕES
+// FUNÇÕES: ENDEREÇOS E AVALIAÇÕES (Via User Metadata)
 // ==========================================
 
 export async function buscarEndereco() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-
-    const { data, error } = await supabase
-      .from('enderecos')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data || null;
+    return user.user_metadata?.endereco || null;
   } catch (erro) {
-    console.error('Erro ao buscar endereço no Supabase:', erro.message || JSON.stringify(erro));
+    console.error('Erro ao buscar endereço:', erro);
     return null;
   }
 }
@@ -174,8 +166,7 @@ export async function salvarEndereco(dadosEndereco) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { erro: 'Usuário não autenticado' };
 
-    const payload = {
-      user_id: user.id,
+    const enderecoLimpo = {
       cep: dadosEndereco.cep,
       rua: dadosEndereco.rua,
       numero: dadosEndereco.numero,
@@ -188,16 +179,15 @@ export async function salvarEndereco(dadosEndereco) {
       atualizado_em: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from('enderecos')
-      .upsert(payload, { onConflict: 'user_id' })
-      .select()
-      .single();
+    const metadataAtual = user.user_metadata || {};
+    const { error } = await supabase.auth.updateUser({
+      data: { ...metadataAtual, endereco: enderecoLimpo }
+    });
 
     if (error) throw error;
-    return { dados: data };
+    return { dados: enderecoLimpo };
   } catch (erro) {
-    console.error('Erro ao salvar endereço no Supabase:', erro.message || JSON.stringify(erro));
+    console.error('Erro ao salvar endereço:', erro.message || erro);
     return { erro: erro.message || 'Não foi possível salvar o endereço.' };
   }
 }
@@ -206,17 +196,9 @@ export async function buscarAvaliacao() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-
-    const { data, error } = await supabase
-      .from('avaliacoes')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data || null;
+    return user.user_metadata?.avaliacao || null;
   } catch (erro) {
-    console.error('Erro ao buscar avaliação no Supabase:', erro.message || JSON.stringify(erro));
+    console.error('Erro ao buscar avaliação:', erro);
     return null;
   }
 }
@@ -226,28 +208,21 @@ export async function salvarAvaliacao(estrelas, comentario) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { erro: 'Usuário não autenticado' };
 
-    const existente = await buscarAvaliacao();
-    let res;
+    const novaAvaliacao = {
+      estrelas,
+      comentario,
+      criado_em: new Date().toISOString()
+    };
 
-    if (existente) {
-      res = await supabase
-        .from('avaliacoes')
-        .update({ estrelas, comentario, criado_em: new Date().toISOString() })
-        .eq('id', existente.id)
-        .select()
-        .single();
-    } else {
-      res = await supabase
-        .from('avaliacoes')
-        .insert({ user_id: user.id, estrelas, comentario })
-        .select()
-        .single();
-    }
+    const metadataAtual = user.user_metadata || {};
+    const { error } = await supabase.auth.updateUser({
+      data: { ...metadataAtual, avaliacao: novaAvaliacao }
+    });
 
-    if (res.error) throw res.error;
-    return { dados: res.data };
+    if (error) throw error;
+    return { dados: novaAvaliacao };
   } catch (erro) {
-    console.error('Erro ao salvar avaliação no Supabase:', erro.message || JSON.stringify(erro));
+    console.error('Erro ao salvar avaliação:', erro.message || erro);
     return { erro: erro.message || 'Não foi possível salvar a avaliação.' };
   }
 }
@@ -257,15 +232,17 @@ export async function deletarAvaliacao() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { erro: 'Usuário não autenticado' };
 
-    const { error } = await supabase
-      .from('avaliacoes')
-      .delete()
-      .eq('user_id', user.id);
+    const metadataAtual = user.user_metadata || {};
+    delete metadataAtual.avaliacao;
+
+    const { error } = await supabase.auth.updateUser({
+      data: metadataAtual
+    });
 
     if (error) throw error;
     return { ok: true };
   } catch (erro) {
-    console.error('Erro ao excluir avaliação no Supabase:', erro.message || JSON.stringify(erro));
+    console.error('Erro ao excluir avaliação:', erro.message || erro);
     return { erro: erro.message || 'Não foi possível excluir a avaliação.' };
   }
 }

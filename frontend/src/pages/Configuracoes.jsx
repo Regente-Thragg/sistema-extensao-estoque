@@ -101,43 +101,43 @@ export default function Configuracoes({
     };
   }, [abaAtiva]);
 
-  // Carregar Endereço e Avaliação diretamente do Supabase ao montar
+  // Carregar Endereço e Avaliação de forma segura ao montar
   const [endereco, setEndereco] = useState({
     cep: '', rua: '', numero: '', semNumero: false, bairro: '', cidade: '', estado: '', complemento: '', descricao: ''
   });
   const [avaliacaoSalva, setAvaliacaoSalva] = useState(null);
 
   useEffect(() => {
-    async function carregarDadosSupabase() {
+    async function carregarDadosSeguros() {
       try {
-        const endSupabase = await buscarEndereco();
-        if (endSupabase) {
+        const endSalvo = await buscarEndereco();
+        if (endSalvo) {
           setEndereco({
-            cep: endSupabase.cep || '',
-            rua: endSupabase.rua || '',
-            numero: endSupabase.numero || '',
-            semNumero: endSupabase.sem_numero ?? false,
-            bairro: endSupabase.bairro || '',
-            cidade: endSupabase.cidade || '',
-            estado: endSupabase.estado || '',
-            complemento: endSupabase.complemento || '',
-            descricao: endSupabase.descricao || ''
+            cep: endSalvo.cep || '',
+            rua: endSalvo.rua || '',
+            numero: endSalvo.numero || '',
+            semNumero: endSalvo.sem_numero ?? false,
+            bairro: endSalvo.bairro || '',
+            cidade: endSalvo.cidade || '',
+            estado: endSalvo.estado || '',
+            complemento: endSalvo.complemento || '',
+            descricao: endSalvo.descricao || ''
           });
         }
 
-        const avalSupabase = await buscarAvaliacao();
-        if (avalSupabase) {
+        const avalSalva = await buscarAvaliacao();
+        if (avalSalva) {
           setAvaliacaoSalva({
-            estrelas: avalSupabase.estrelas,
-            comentario: avalSupabase.comentario,
-            data: new Date(avalSupabase.criado_em).toLocaleString('pt-BR')
+            estrelas: avalSalva.estrelas,
+            comentario: avalSalva.comentario,
+            data: new Date(avalSalva.criado_em).toLocaleString('pt-BR')
           });
         }
       } catch (err) {
-        console.error('Erro ao carregar dados do Supabase:', err);
+        console.error('Erro ao carregar dados salvos:', err);
       }
     }
-    carregarDadosSupabase();
+    carregarDadosSeguros();
   }, []);
 
   // Cronômetro Regressivo de 24 Horas em Tempo Real com Expiração Automática
@@ -215,7 +215,7 @@ export default function Configuracoes({
   const [nomeResidencia, setNomeResidencia] = useState(perfilUsuario?.nomeResidencia || 'Despensa em Casa');
   const [limiteEstoqueBaixo, setLimiteEstoqueBaixo] = useState(perfilUsuario?.limiteEstoqueBaixo || 3);
 
-  // Sincronização unificada dos campos de nome utilizando metadados consistentes (user_metadata / perfilUsuario)
+  // Sincronização unificada dos campos de nome
   const [nomeCompleto, setNomeCompleto] = useState(perfilUsuario?.nome_completo || perfilUsuario?.nomeCompleto || '');
   const [nomeUsuario, setNomeUsuario] = useState(perfilUsuario?.nome_usuario || perfilUsuario?.nomeUsuario || perfilUsuario?.user_metadata?.nome_usuario || '');
   const [cpf, setCpf] = useState(perfilUsuario?.cpf || '');
@@ -318,19 +318,6 @@ export default function Configuracoes({
       const { error } = await supabase.auth.updateUser({ data: novosDados });
       if (error) throw error;
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('perfis')
-          .upsert({
-            id: user.id,
-            email: user.email,
-            nome_completo: nomeCompleto,
-            nome_usuario: nomeUsuario,
-            cpf: cpf
-          });
-      }
-
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
       setEditandoPerfil(false);
       setSucesso('Perfil atualizado com sucesso!');
@@ -366,11 +353,11 @@ export default function Configuracoes({
       if (error) throw error;
       if (onAtualizarPerfil) onAtualizarPerfil(novosDados);
 
-      // Salvar no Supabase (tabela enderecos)
+      // Salvar de forma segura (via user_metadata)
       const resEnd = await salvarEndereco(endereco);
       if (resEnd.erro) throw new Error(resEnd.erro);
 
-      setSucesso('Endereço atualizado com sucesso e salvo no Supabase!');
+      setSucesso('Endereço atualizado com sucesso!');
       setTimeout(() => setSucesso(''), 3000);
     } catch (err) {
       setErro('Erro ao salvar endereço.');
@@ -397,7 +384,7 @@ export default function Configuracoes({
       setAvaliacaoSalva(novaAval);
 
       setEditandoAvaliacao(false);
-      setSucesso('Avaliação salva com sucesso no Supabase!');
+      setSucesso('Avaliação enviada com sucesso!');
       setComentarioAvaliacao('');
       setEstrelas(0);
     } catch (err) {
@@ -622,7 +609,7 @@ export default function Configuracoes({
 
         {abaAtiva === 'pessoal' && (
           <form onSubmit={handleSalvarPessoal} className="space-y-4">
-            <h3 className="text-base font-bold text-gray-900 dark:text-white border-b pb-2 dark:border-gray-800">Endereço Cadastrado (Salvo no Supabase)</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white border-b pb-2 dark:border-gray-800">Endereço Cadastrado</h3>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">CEP</label><input type="text" value={endereco.cep} onChange={handleCepChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" required /></div>
               <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Rua</label><input type="text" value={endereco.rua} onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs" required /></div>
