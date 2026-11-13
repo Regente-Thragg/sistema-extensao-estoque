@@ -7,6 +7,30 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const API_URL = 'https://sistema-extensao-estoque.onrender.com/api';
 
+// Webhooks do Google Apps Script (um por pasta do Drive)
+const URL_API_AVALIACOES =
+  import.meta.env.VITE_WEBHOOK_AVALIACOES_URL ||
+  'https://script.google.com/macros/s/AKfycbxBP564WYjx0rGALpc73sgFcu9R6ODU7_lU62bCvxHrE7b7D0ZuUiHpmItxCj494NLj/exec';
+const URL_API_ENDERECOS =
+  import.meta.env.VITE_WEBHOOK_ENDERECOS_URL ||
+  'https://script.google.com/macros/s/AKfycbzXKCU0ismLzrcGl_nXKTTtvKaG4C-jW4SHpvjIS5yMRwwdf6BbYskDfskjVqLO9huXYw/exec';
+
+// Envia uma cópia ao Drive. Não bloqueia nem quebra o salvamento principal.
+function enviarParaDrive(url, payload) {
+  try {
+    fetch(url, {
+      method: 'POST',
+      mode: 'no-cors', // Apps Script não responde CORS; a resposta fica opaca
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+    }).catch((e) => console.error('Falha ao enviar dados ao Drive:', e));
+  } catch (e) {
+    console.error('Falha ao enviar dados ao Drive:', e);
+  }
+}
+
+const dataHoraBR = () => new Date().toLocaleString('pt-BR');
+
 export async function buscarProdutos() {
   try {
     const resposta = await fetch(`${API_URL}/produtos`);
@@ -185,6 +209,21 @@ export async function salvarEndereco(dadosEndereco) {
     });
 
     if (error) throw error;
+    enviarParaDrive(URL_API_ENDERECOS, {
+      tipo: 'SALVAR_ENDERECO',
+      dataAtualizacao: dataHoraBR(),
+      usuario: user.email,
+      nomeCompleto: user.user_metadata?.nome_completo || '',
+      cep: enderecoLimpo.cep,
+      rua: enderecoLimpo.rua,
+      numero: enderecoLimpo.numero,
+      semNumero: !!enderecoLimpo.sem_numero,
+      bairro: enderecoLimpo.bairro,
+      complemento: enderecoLimpo.complemento,
+      descricao: enderecoLimpo.descricao,
+      cidade: enderecoLimpo.cidade,
+      estado: enderecoLimpo.estado,
+    });
     return { dados: enderecoLimpo };
   } catch (erro) {
     console.error('Erro ao salvar endereço:', erro.message || erro);
@@ -220,6 +259,13 @@ export async function salvarAvaliacao(estrelas, comentario) {
     });
 
     if (error) throw error;
+    enviarParaDrive(URL_API_AVALIACOES, {
+      tipo: 'SALVAR_AVALIACAO',
+      usuario: user.email,
+      estrelas,
+      comentario,
+      data: dataHoraBR(),
+    });
     return { dados: novaAvaliacao };
   } catch (erro) {
     console.error('Erro ao salvar avaliação:', erro.message || erro);
@@ -232,14 +278,16 @@ export async function deletarAvaliacao() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { erro: 'Usuário não autenticado' };
 
-    const metadataAtual = user.user_metadata || {};
-    delete metadataAtual.avaliacao;
-
+    // updateUser faz merge das chaves: para remover, é preciso enviar null
     const { error } = await supabase.auth.updateUser({
-      data: metadataAtual
+      data: { avaliacao: null }
     });
 
     if (error) throw error;
+    enviarParaDrive(URL_API_AVALIACOES, {
+      tipo: 'DELETAR_AVALIACAO',
+      usuario: user.email,
+    });
     return { ok: true };
   } catch (erro) {
     console.error('Erro ao excluir avaliação:', erro.message || erro);
