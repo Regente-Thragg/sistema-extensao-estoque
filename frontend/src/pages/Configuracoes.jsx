@@ -5,7 +5,8 @@ import {
   salvarEndereco, 
   buscarAvaliacao, 
   salvarAvaliacao, 
-  deletarAvaliacao 
+  deletarAvaliacao,
+  enviarFotoPerfil
 } from '../services/api';
 
 const BTN_BASE = 'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-xs font-semibold transition';
@@ -330,6 +331,16 @@ export default function Configuracoes({
   };
 
   const handleAtualizarFotoDireta = async (novaFoto) => {
+    // Imagem enviada pelo usuário: vai para o Storage e só a URL fica no perfil
+    // (a imagem em base64 dentro do perfil estourava o tamanho do token de login)
+    if (novaFoto && novaFoto.startsWith('data:')) {
+      const envio = await enviarFotoPerfil(novaFoto);
+      if (envio.erro) {
+        setErro('Não foi possível enviar a foto. Tente novamente.');
+        return;
+      }
+      novaFoto = envio.url;
+    }
     setFotoPerfil(novaFoto);
     try {
       const novosDados = { nome_completo: nomeCompleto, nome_usuario: nomeUsuario, nomeUsuario, cpf, fotoPerfil: novaFoto, limiteEstoqueBaixo, nomeResidencia, endereco };

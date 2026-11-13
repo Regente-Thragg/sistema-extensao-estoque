@@ -7,10 +7,101 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const API_URL = 'https://sistema-extensao-estoque.onrender.com/api';
 
+// ---------------------------------------------------------------------------
+// Foto de perfil: NUNCA guardar a imagem dentro do user_metadata.
+// Tudo que está no user_metadata vai dentro do token de login (JWT) e o token
+// viaja em todo pedido ao backend; uma foto em base64 deixa o cabeçalho enorme
+// e o servidor recusa o pedido (erro 431).
+// ---------------------------------------------------------------------------
+const BUCKET_AVATARES = 'avatares';
+
+function carregarImagem(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Imagem inválida.'));
+    img.src = src;
+  });
+}
+
+// Recorta ao centro em quadrado, reduz e converte para JPEG
+async function redimensionarImagem(dataUrl, lado = 256, qualidade = 0.8) {
+  const img = await carregarImagem(dataUrl);
+  const menor = Math.min(img.width, img.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = lado;
+  canvas.height = lado;
+  canvas.getContext('2d').drawImage(
+    img, (img.width - menor) / 2, (img.height - menor) / 2, menor, menor, 0, 0, lado, lado
+  );
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Falha ao converter a imagem.'))), 'image/jpeg', qualidade);
+  });
+}
+
+function blobParaDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(leitor.result);
+    leitor.onerror = () => reject(new Error('Falha ao ler a imagem.'));
+    leitor.readAsDataURL(blob);
+  });
+}
+
+// Envia a foto (reduzida a 256x256) ao Storage e devolve só a URL pública
+export async function enviarFotoPerfil(dataUrl) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { erro: 'Usuário não autenticado' };
+
+    const blob = await redimensionarImagem(dataUrl, 256, 0.8);
+    const caminho = `${user.id}/avatar.jpg`;
+    const { error } = await supabase.storage
+      .from(BUCKET_AVATARES)
+      .upload(caminho, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+    if (error) throw error;
+
+    const { data } = supabase.storage.from(BUCKET_AVATARES).getPublicUrl(caminho);
+    return { url: `${data.publicUrl}?v=${Date.now()}` }; // ?v= evita mostrar a foto antiga em cache
+  } catch (erro) {
+    console.error('Erro ao enviar foto de perfil:', erro.message || erro);
+    return { erro: erro.message || 'Não foi possível enviar a foto.' };
+  }
+}
+
+// Contas antigas já têm a foto em base64 no perfil. Troca por URL (ou miniatura)
+// e renova o token, para o cabeçalho voltar ao tamanho normal.
+let reparoFotoEmAndamento = null;
+async function repararFotoGrande(session) {
+  const foto = session?.user?.user_metadata?.fotoPerfil;
+  if (typeof foto !== 'string' || !foto.startsWith('data:')) return false;
+
+  if (!reparoFotoEmAndamento) {
+    reparoFotoEmAndamento = (async () => {
+      const envio = await enviarFotoPerfil(foto);
+      let nova = envio.url;
+      if (!nova) {
+        // Plano B (ex.: bucket ainda não criado): miniatura de 48px no próprio perfil
+        try { nova = await blobParaDataUrl(await redimensionarImagem(foto, 48, 0.6)); } catch (_) { nova = ''; }
+      }
+      const { error } = await supabase.auth.updateUser({ data: { fotoPerfil: nova } });
+      if (error) throw error;
+      await supabase.auth.refreshSession();
+    })()
+      .catch((e) => console.error('Falha ao reduzir a foto de perfil:', e.message || e))
+      .finally(() => { reparoFotoEmAndamento = null; });
+  }
+  await reparoFotoEmAndamento;
+  return true;
+}
+
 // Todas as chamadas ao backend levam o token do usuário logado.
-// O backend deve validar esse token e filtrar os dados por usuário.
+// O backend valida esse token e filtra os dados por usuário.
 async function fetchApi(url, options = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
+  let { data: { session } } = await supabase.auth.getSession();
+  if (await repararFotoGrande(session)) {
+    ({ data: { session } } = await supabase.auth.getSession());
+  }
   const headers = { ...(options.headers || {}) };
   if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
   return fetch(url, { ...options, headers });
