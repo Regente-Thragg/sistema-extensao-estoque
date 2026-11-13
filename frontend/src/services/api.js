@@ -7,6 +7,15 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const API_URL = 'https://sistema-extensao-estoque.onrender.com/api';
 
+// Todas as chamadas ao backend levam o token do usuário logado.
+// O backend deve validar esse token e filtrar os dados por usuário.
+async function fetchApi(url, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = { ...(options.headers || {}) };
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+  return fetch(url, { ...options, headers });
+}
+
 // Webhooks do Google Apps Script (um por pasta do Drive)
 const URL_API_AVALIACOES =
   import.meta.env.VITE_WEBHOOK_AVALIACOES_URL ||
@@ -33,8 +42,9 @@ const dataHoraBR = () => new Date().toLocaleString('pt-BR');
 
 export async function buscarProdutos() {
   try {
-    const resposta = await fetch(`${API_URL}/produtos`);
-    return await resposta.json();
+    const resposta = await fetchApi(`${API_URL}/produtos`);
+    const dados = await resposta.json();
+    return Array.isArray(dados) ? dados : []; // erro do servidor não pode virar lista inválida
   } catch (erro) {
     console.error('Erro ao buscar produtos:', erro.message || erro);
     return [];
@@ -43,7 +53,7 @@ export async function buscarProdutos() {
 
 export async function criarProduto(produto) {
   try {
-    const resposta = await fetch(`${API_URL}/produtos`, {
+    const resposta = await fetchApi(`${API_URL}/produtos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(produto),
@@ -57,7 +67,7 @@ export async function criarProduto(produto) {
 
 export async function atualizarProduto(id, dados) {
   try {
-    const resposta = await fetch(`${API_URL}/produtos/${id}`, {
+    const resposta = await fetchApi(`${API_URL}/produtos/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dados),
@@ -75,7 +85,7 @@ export async function atualizarProduto(id, dados) {
 
 export async function reporEstoque(id, qtd = 1, preco = null) {
   try {
-    const resposta = await fetch(`${API_URL}/produtos/${id}/repor`, {
+    const resposta = await fetchApi(`${API_URL}/produtos/${id}/repor`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ qtd, preco }),
@@ -89,7 +99,7 @@ export async function reporEstoque(id, qtd = 1, preco = null) {
 
 export async function registrarVenda(id, qtd = 1) {
   try {
-    const resposta = await fetch(`${API_URL}/produtos/${id}/venda`, {
+    const resposta = await fetchApi(`${API_URL}/produtos/${id}/venda`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ qtd }),
@@ -103,7 +113,7 @@ export async function registrarVenda(id, qtd = 1) {
 
 export async function deletarProduto(id) {
   try {
-    const resposta = await fetch(`${API_URL}/produtos/${id}`, {
+    const resposta = await fetchApi(`${API_URL}/produtos/${id}`, {
       method: 'DELETE',
     });
     return await resposta.json();
@@ -115,8 +125,9 @@ export async function deletarProduto(id) {
 
 export async function buscarHistorico() {
   try {
-    const resposta = await fetch(`${API_URL}/historico`);
-    return await resposta.json();
+    const resposta = await fetchApi(`${API_URL}/historico`);
+    const dados = await resposta.json();
+    return Array.isArray(dados) ? dados : []; // erro do servidor não pode virar lista inválida
   } catch (erro) {
     console.error('Erro ao buscar histórico:', erro.message || erro);
     return [];
@@ -125,7 +136,7 @@ export async function buscarHistorico() {
 
 export async function limparHistorico() {
   try {
-    const resposta = await fetch(`${API_URL}/historico`, {
+    const resposta = await fetchApi(`${API_URL}/historico`, {
       method: 'DELETE',
     });
     return await resposta.json();
@@ -137,8 +148,9 @@ export async function limparHistorico() {
 
 export async function buscarCategorias() {
   try {
-    const resposta = await fetch(`${API_URL}/categorias`);
-    return await resposta.json();
+    const resposta = await fetchApi(`${API_URL}/categorias`);
+    const dados = await resposta.json();
+    return Array.isArray(dados) ? dados : []; // erro do servidor não pode virar lista inválida
   } catch (erro) {
     console.error('Erro ao buscar categorias:', erro.message || erro);
     return [];
@@ -147,7 +159,7 @@ export async function buscarCategorias() {
 
 export async function criarCategoria(nome) {
   try {
-    const resposta = await fetch(`${API_URL}/categorias`, {
+    const resposta = await fetchApi(`${API_URL}/categorias`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome }),
